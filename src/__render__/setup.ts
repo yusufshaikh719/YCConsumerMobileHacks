@@ -18,6 +18,11 @@ jest.mock("../lib/position", () => ({
   getCurrentFix: jest.fn(async () => ({ fix: { lat: 37.7694, lng: -122.4862, accuracy: 10 } })),
 }));
 
+jest.mock("../lib/maps", () => ({
+  ...jest.requireActual<typeof import("../lib/maps")>("../lib/maps"),
+  loadMaps: () => jest.requireMock("react-native-maps"),
+}));
+
 jest.mock("react-native-maps", () => {
   const React = jest.requireActual<typeof import("react")>("react");
   const { View } = jest.requireActual<typeof import("react-native")>("react-native");
