@@ -6,18 +6,19 @@ import { Paper } from "../components/Paper";
 import { haptic } from "../lib/haptics";
 import { useNow } from "../lib/useNow";
 import type { Sidequest } from "../services/types";
-import { pingSecondsLeft } from "../state/machine";
+import { pingSecondsLeft, type Timing } from "../state/machine";
 import { useReducedMotion } from "../theme/motion";
 import { Text } from "../theme/Text";
 import { colors, space } from "../theme/tokens";
 
 const BUZZ_AT = new Set([10, 3, 2, 1]);
 
-export function Ping({ quest }: { quest: Sidequest }) {
+export function Ping({ timing, quest }: { timing: Timing; quest: Sidequest | null }) {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const now = useNow(200);
-  const seconds = pingSecondsLeft(quest, now);
+  const seconds = pingSecondsLeft(timing, now);
+  const searching = seconds === 0 && !quest;
   const slam = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   const beat = useRef(new Animated.Value(1)).current;
   const last = useRef<number | null>(null);
@@ -52,14 +53,18 @@ export function Ping({ quest }: { quest: Sidequest }) {
           <Text variant="label" color={colors.sprout}>Sidequest incoming</Text>
         </View>
         <View style={styles.center} accessibilityLiveRegion="polite" accessibilityLabel={`${seconds} seconds`}>
-          <Animated.View style={{ transform: [{ scale: beat }] }}>
-            <Text variant="scoreboard" color={urgent ? colors.sprout : colors.onMoss} style={styles.count} allowFontScaling={false}>
-              {seconds}
-            </Text>
-          </Animated.View>
+          {searching ? (
+            <Text variant="hero" color={colors.sprout} align="center">Finding your landmark…</Text>
+          ) : (
+            <Animated.View style={{ transform: [{ scale: beat }] }}>
+              <Text variant="scoreboard" color={urgent ? colors.sprout : colors.onMoss} style={styles.count} allowFontScaling={false}>
+                {seconds}
+              </Text>
+            </Animated.View>
+          )}
           <Text variant="display" color={colors.onMoss} style={styles.shoes}>Shoes on.</Text>
         </View>
-        <Text variant="body" color={colors.onMossMuted} align="center">Your landmark drops at zero.</Text>
+        <Text variant="body" color={colors.onMossMuted} align="center">{searching ? "Looking for something worth a 10-minute walk." : "Your landmark drops at zero."}</Text>
       </Animated.View>
     </Paper>
   );

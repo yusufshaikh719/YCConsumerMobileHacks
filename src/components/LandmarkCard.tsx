@@ -1,4 +1,5 @@
-import { Image, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Photo } from "./Photo";
 import type { Landmark } from "../services/types";
 import { Text } from "../theme/Text";
 import { colors, radius, space } from "../theme/tokens";
@@ -6,7 +7,7 @@ import { colors, radius, space } from "../theme/tokens";
 export function LandmarkCard({ landmark }: { landmark: Landmark }) {
   return (
     <View style={styles.card}>
-      <Image source={landmark.thumbnail} style={styles.thumb} accessibilityIgnoresInvertColors />
+      <Photo source={landmark.thumbnail} style={styles.thumb} icon="location-outline" />
       <View style={styles.body}>
         <Text variant="label" color={colors.leaf}>{landmark.neighborhood}</Text>
         <Text variant="heading" numberOfLines={1}>{landmark.name}</Text>

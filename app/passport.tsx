@@ -1,5 +1,6 @@
 import { StatusBar } from "expo-status-bar";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Photo } from "../src/components/Photo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 import { Paper } from "../src/components/Paper";
@@ -39,7 +40,7 @@ export default function Passport() {
           <View style={styles.identity}>
             <View>
               <Text variant="label" color={colors.muted}>Holder</Text>
-              <Text variant="heading">{me?.fullName ?? me?.name}</Text>
+              <Text variant="heading">{me?.fullName ?? "You"}</Text>
               <Text variant="small" color={colors.muted}>{data.group.name}</Text>
             </View>
             <View style={styles.totals}>
@@ -55,7 +56,7 @@ export default function Passport() {
                 <View key={day} style={styles.slot}>
                   {card ? (
                     <View style={styles.stampWrap}>
-                      <Image source={card.photo} style={styles.thumb} />
+                      <Photo source={card.photo} style={styles.thumb} />
                       <View style={styles.overThumb}>
                         <Postmark size={104} top={card.landmark.name.toUpperCase()} middle={formatTimeOfDay(card.completedAt).replace(" ", "")} bottom={`${weekdayShort(day).toUpperCase()} · ${card.minutesTaken} MIN`} color={INKS[i]} rotate={TILTS[i]} fill="rgba(251,249,242,0.82)" />
                       </View>
@@ -73,7 +74,7 @@ export default function Passport() {
             })}
           </View>
           <View style={styles.rule} />
-          <Text variant="small" color={colors.inkSoft} align="center">{minutes} minutes walked to {mine.length} landmarks this week.</Text>
+          <Text variant="small" color={colors.inkSoft} align="center">{mine.length ? `${minutes} minutes walked to ${mine.length} ${mine.length === 1 ? "landmark" : "landmarks"} this week.` : "No stamps yet. Your first sidequest fills the first circle."}</Text>
         </View>
       </ScrollView>
     </Paper>

@@ -8,6 +8,7 @@ import { Paper } from "../components/Paper";
 import { QuestMap } from "../components/QuestMap";
 import { TimerRing } from "../components/TimerRing";
 import { bearingDegrees, distanceMeters, formatDistance } from "../lib/geo";
+import { walkMinutesFor } from "../services/discovery";
 import { haptic } from "../lib/haptics";
 import { formatMinSec } from "../lib/time";
 import { useNow } from "../lib/useNow";
@@ -60,7 +61,7 @@ export function QuestLive({ quest }: { quest: Sidequest }) {
       <Animated.View style={[styles.hero, { opacity: entry, transform: [{ scale: entry.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1] }) }] }]}>
         {showMap ? (
           <View style={[styles.mapWrap, { height: ring + 96 }]}>
-            <QuestMap you={here} target={quest.landmark.coords} />
+            <QuestMap you={here} target={quest.landmark.coords} title={quest.landmark.name} />
           </View>
         ) : (
           <>
@@ -72,7 +73,7 @@ export function QuestLive({ quest }: { quest: Sidequest }) {
               <Text variant="title" color={colors.sprout} style={styles.unit}>{distance.unit}</Text>
             </View>
             <Text variant="small" color={colors.onMossMuted} align="center">
-              {heading === null ? "Arrow is north-up · compass unavailable" : `About ${Math.max(1, Math.round(remaining / 75))} min on foot`}
+              {heading === null ? "Arrow is north-up · compass unavailable" : `About ${walkMinutesFor(remaining)} min on foot`}
             </Text>
           </>
         )}

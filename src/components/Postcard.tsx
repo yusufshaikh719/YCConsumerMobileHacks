@@ -1,4 +1,5 @@
-import { Image, StyleSheet, View, type ViewStyle } from "react-native";
+import { StyleSheet, View, type ViewStyle } from "react-native";
+import { Photo } from "./Photo";
 import { formatTimeOfDay, weekdayShort } from "../lib/time";
 import type { Member, Postcard as PostcardData } from "../services/types";
 import { Text } from "../theme/Text";
@@ -14,7 +15,7 @@ export function Postcard({ card, member, width, background = colors.paper, style
   const compact = width < 170;
   return (
     <View style={[styles.card, { width, padding: pad }, style]} accessibilityLabel={`${member ? member.name + " at " : ""}${card.landmark.name}`}>
-      <Image source={card.photo} style={[styles.photo, { height: photoHeight }]} resizeMode="cover" />
+      <Photo source={card.photo} style={[styles.photo, { height: photoHeight }]} />
       <View style={[styles.caption, { paddingTop: pad * 0.9 }]}>
         <Text variant={compact ? "small" : "bodyStrong"} numberOfLines={1} style={compact && styles.compactTitle}>{card.landmark.name}</Text>
         <Text variant="small" color={colors.muted} numberOfLines={1} style={compact && styles.compactMeta}>

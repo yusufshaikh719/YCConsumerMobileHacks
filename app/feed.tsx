@@ -1,12 +1,14 @@
 import { StatusBar } from "expo-status-bar";
-import { Share, StyleSheet, useWindowDimensions, View, ScrollView } from "react-native";
+import { StyleSheet, useWindowDimensions, View, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar } from "../src/components/Avatar";
 import { IconButton } from "../src/components/IconButton";
+import { InviteCard } from "../src/components/InviteCard";
 import { Paper } from "../src/components/Paper";
 import { Postcard } from "../src/components/Postcard";
 import { Reactions } from "../src/components/Reactions";
 import { ScreenHeader } from "../src/components/ScreenHeader";
+import { shareInvite } from "../src/lib/invite";
 import { money } from "../src/lib/money";
 import { isSameDay, weekdayShort } from "../src/lib/time";
 import { ante } from "../src/services";
@@ -29,12 +31,12 @@ export default function Feed() {
     if (day?.label === label) day.cards.push(card);
     else days.push({ label, cards: [card] });
   }
-  const invite = () => void Share.share({ message: `Join ${data.group.name} on Ante. ${money(data.stakeCents)} in, most sidequests by Sunday takes the pot. ante://join/${data.group.inviteCode}` });
+  const alone = data.group.members.length < 2;
 
   return (
     <Paper style={{ paddingTop: insets.top }}>
       <StatusBar style="dark" />
-      <ScreenHeader title="This week" subtitle={`${data.group.name} · ${money(data.potCents)} pot`} right={<IconButton icon="person-add-outline" label="Invite friends" onPress={invite} />} />
+      <ScreenHeader title="This week" subtitle={`${data.group.name} · ${money(data.potCents)} pot`} right={<IconButton icon="person-add-outline" label="Invite friends" onPress={() => void shareInvite(data)} />} />
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + space.xl }} showsVerticalScrollIndicator={false}>
         <View style={styles.board}>
           {data.standings.map(s => {
@@ -52,6 +54,19 @@ export default function Feed() {
             );
           })}
         </View>
+
+        {alone && (
+          <View style={styles.invite}>
+            <InviteCard data={data} title="Nobody to race yet" body={`Your group is just you. Send the link, and everyone who joins puts ${money(data.stakeCents)} into this week's pot.`} />
+          </View>
+        )}
+
+        {days.length === 0 && (
+          <View style={styles.empty}>
+            <Text variant="bodyStrong">No postcards this week</Text>
+            <Text variant="small" color={colors.muted}>Every landmark you stamp lands here, with the photo you took.</Text>
+          </View>
+        )}
 
         {days.map(day => (
           <View key={day.label}>
@@ -79,6 +94,8 @@ const styles = StyleSheet.create({
   track: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.paper, overflow: "hidden" },
   fill: { height: 6, borderRadius: 3 },
   count: { width: 18, textAlign: "right" },
+  invite: { marginTop: space.lg },
+  empty: { marginHorizontal: space.lg, marginTop: space.lg, padding: space.lg, gap: 4, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed", borderColor: colors.rule },
   day: { paddingHorizontal: space.lg, marginTop: space.lg, marginBottom: space.sm },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: space.md, paddingHorizontal: space.lg },
   cell: { gap: space.sm, marginBottom: space.xs },

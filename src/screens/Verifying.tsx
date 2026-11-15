@@ -1,11 +1,11 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Image, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Animated, Easing, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Photo } from "../components/Photo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import { Paper } from "../components/Paper";
 import { Perforation } from "../components/Perforation";
-import { myQuestPhoto } from "../services/fixtures";
 import type { Sidequest } from "../services/types";
 import { useReducedMotion } from "../theme/motion";
 import { Text } from "../theme/Text";
@@ -46,7 +46,7 @@ export function Verifying({ quest, photoUri }: { quest: Sidequest; photoUri: str
       <StatusBar style="dark" />
       <View style={styles.center}>
         <View style={[styles.card, { width: cardWidth }]}>
-          <Image source={photoUri ? { uri: photoUri } : myQuestPhoto} style={[styles.photo, { height: cardWidth * 1.15 }]} />
+          <Photo source={photoUri ? { uri: photoUri } : quest.landmark.thumbnail} style={[styles.photo, { height: cardWidth * 1.15 }]} />
           <View style={styles.caption}>
             <Text variant="bodyStrong">{quest.landmark.name}</Text>
             <Text variant="small" color={colors.muted}>{quest.landmark.neighborhood}</Text>

@@ -2,20 +2,18 @@ import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Linking, Platform } from "react-native";
 import { devToolsEnabled } from "../dev/enabled";
-import { insideGeofence } from "../lib/geofence";
-import { cancelPing, enableNotifications, onPingNotification, schedulePing } from "../lib/notifications";
-import { useDevicePosition, useHeading } from "../lib/position";
-import { simulatedPosition } from "../lib/simulatedWalk";
+import { arrivedAt } from "../lib/geofence";
+import { cancelPing, enableNotifications, notificationsGranted, onPingNotification, schedulePing } from "../lib/notifications";
+import { getCurrentFix, useDevicePosition, useHeading } from "../lib/position";
 import { PING_LEAD_MS } from "../lib/time";
-import { useNow } from "../lib/useNow";
 import { ante } from "../services";
-import type { AnteSnapshot, LatLng } from "../services/types";
+import type { AnteSnapshot, Fix, Sidequest } from "../services/types";
 import { initialPhase, reduce, type Event, type Phase, type PhaseName } from "./machine";
 
 type Ante = {
   phase: Phase;
   data: AnteSnapshot;
-  position: LatLng | null;
+  position: Fix | null;
   heading: number | null;
   locationDenied: boolean;
   notificationsOn: boolean | null;
@@ -29,6 +27,16 @@ export type DevTarget = PhaseName | "waiting-open" | "waiting-closed" | "not-ver
 const AnteContext = createContext<Ante | null>(null);
 const QUEST_PHASES: PhaseName[] = ["live", "arrived", "verifying"];
 
+async function findQuest(pingAt: number): Promise<{ quest: Sidequest } | { reason: "no_landmark" | "no_location" }> {
+  const located = await getCurrentFix();
+  if (!("fix" in located)) return { reason: "no_location" };
+  try {
+    return { quest: await ante.startSidequest(pingAt, located.fix) };
+  } catch {
+    return { reason: "no_landmark" };
+  }
+}
+
 export function AnteProvider({ children }: { children: ReactNode }) {
   const data = useSyncExternalStore(ante.subscribe, ante.getSnapshot);
   const [phase, dispatch] = useReducer(reduce, initialPhase);
@@ -38,24 +46,26 @@ export function AnteProvider({ children }: { children: ReactNode }) {
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
 
   const questActive = QUEST_PHASES.includes(phase.name);
-  const tracking = questActive && ante.positionMode === "device";
-  const device = useDevicePosition(tracking);
+  const device = useDevicePosition(questActive);
   const heading = useHeading(phase.name === "live");
-  const now = useNow(questActive ? 1000 : 60_000);
-  const quest = "quest" in phase ? phase.quest : null;
-  const position = !quest ? null : ante.positionMode === "device" ? device.position : phase.name === "live" ? simulatedPosition(quest, now) : quest.landmark.coords;
+  const position = questActive ? device.position : null;
+
+  useEffect(() => {
+    void ante.load();
+  }, []);
 
   const firePing = useCallback(async (pingAt: number) => {
     if (phaseRef.current.name !== "waiting") return;
-    const quest = await ante.startSidequest(pingAt);
     scheduledFor.current = null;
-    dispatch({ type: "PING", quest, now: Date.now() });
+    dispatch({ type: "PING", timing: { pingAt, revealAt: pingAt + PING_LEAD_MS }, now: Date.now() });
+    const found = await findQuest(pingAt);
+    dispatch("quest" in found ? { type: "QUEST_READY", quest: found.quest, now: Date.now() } : { type: "QUEST_UNAVAILABLE", reason: found.reason });
   }, []);
 
   useEffect(() => onPingNotification(pingAt => void firePing(pingAt)), [firePing]);
 
   useEffect(() => {
-    if (phase.name !== "waiting") return;
+    if (phase.name !== "waiting" || !data.onboarded) return;
     const pingAt = data.nextPingAt;
     if (!pingAt || pingAt + PING_LEAD_MS <= Date.now()) {
       void ante.armNextPing(Date.now());
@@ -79,7 +89,20 @@ export function AnteProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer);
       sub.remove();
     };
-  }, [phase.name, data.nextPingAt, firePing]);
+  }, [phase.name, data.onboarded, data.nextPingAt, firePing]);
+
+  useEffect(() => {
+    if (notificationsOn !== false) return;
+    const sub = AppState.addEventListener("change", state => {
+      if (state !== "active") return;
+      void notificationsGranted().then(granted => {
+        if (!granted) return;
+        setNotificationsOn(true);
+        if (data.nextPingAt) void schedulePing(data.nextPingAt).catch(() => undefined);
+      });
+    });
+    return () => sub.remove();
+  }, [notificationsOn, data.nextPingAt]);
 
   useEffect(() => {
     if (phase.name === "waiting") return;
@@ -87,8 +110,8 @@ export function AnteProvider({ children }: { children: ReactNode }) {
   }, [phase.name]);
 
   useEffect(() => {
-    if (phase.name !== "ping") return;
-    const timer = setTimeout(() => dispatch({ type: "REVEAL" }), Math.max(0, phase.quest.revealAt - Date.now()));
+    if (phase.name !== "ping" || !phase.quest) return;
+    const timer = setTimeout(() => dispatch({ type: "REVEAL" }), Math.max(0, phase.timing.revealAt - Date.now()));
     return () => clearTimeout(timer);
   }, [phase]);
 
@@ -100,7 +123,7 @@ export function AnteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (phase.name !== "live" || !position) return;
-    if (insideGeofence(position, phase.quest.landmark)) dispatch({ type: "ARRIVE" });
+    if (arrivedAt(position, phase.quest.landmark)) dispatch({ type: "ARRIVE" });
   }, [phase, position]);
 
   const positionRef = useRef(position);
@@ -108,9 +131,11 @@ export function AnteProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (phase.name !== "verifying") return;
     let cancelled = false;
-    void ante.verifyArrival(phase.quest, phase.photoUri, positionRef.current ?? phase.quest.landmark.coords).then(result => {
+    void (async () => {
+      const located = positionRef.current ?? (await getCurrentFix().then(r => ("fix" in r ? r.fix : null)));
+      const result = located ? await ante.verifyArrival(phase.quest, phase.photoUri, located) : ({ ok: false, reason: "not_verified" } as const);
       if (!cancelled) dispatch(result.ok ? { type: "VERIFIED", result } : { type: "REJECTED" });
-    });
+    })();
     return () => {
       cancelled = true;
     };
@@ -131,9 +156,19 @@ export function AnteProvider({ children }: { children: ReactNode }) {
       setTimeout(() => void firePing(pingAt), 10_000);
       return;
     }
-    const elapsed = target === "ping" ? 0 : target === "live" ? PING_LEAD_MS + 20_000 : PING_LEAD_MS + 11 * 60_000;
-    const quest = await ante.startSidequest(at - elapsed);
-    if (target === "ping" || target === "live" || target === "arrived") dispatch({ type: "DEV_JUMP", phase: { name: target, quest } });
+    if (target === "ping") {
+      dispatch({ type: "DEV_JUMP", phase: { name: "waiting" } });
+      await firePing(at);
+      return;
+    }
+    const elapsed = target === "live" ? PING_LEAD_MS + 20_000 : PING_LEAD_MS + 11 * 60_000;
+    const found = await findQuest(at - elapsed);
+    if (!("quest" in found)) {
+      dispatch({ type: "DEV_JUMP", phase: { name: "failed", quest: null, reason: found.reason } });
+      return;
+    }
+    const { quest } = found;
+    if (target === "live" || target === "arrived") dispatch({ type: "DEV_JUMP", phase: { name: target, quest } });
     else if (target === "verifying") dispatch({ type: "DEV_JUMP", phase: { name: "verifying", quest, photoUri: null } });
     else if (target === "failed") dispatch({ type: "DEV_JUMP", phase: { name: "failed", quest: { ...quest, expiresAt: at }, reason: "timeout" } });
     else if (target === "not-verified") dispatch({ type: "DEV_JUMP", phase: { name: "failed", quest, reason: "not_verified" } });

@@ -1,9 +1,11 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Image, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Animated, Easing, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Photo } from "../components/Photo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { InviteCard } from "../components/InviteCard";
 import { Paper } from "../components/Paper";
 import { Perforation } from "../components/Perforation";
 import { Postmark } from "../components/Postmark";
@@ -48,7 +50,8 @@ export function Verified({ result }: { result: Result }) {
   const payout = payoutPreview(after, data.potCents, data.meId);
   const cardWidth = Math.min(width - space.xl * 2, 330);
   const stampSize = cardWidth * 0.42;
-  const headline = passed.length ? `You passed ${passed.map(m => m.name).join(" and ")}` : me?.rank === 1 ? "Still on top" : "Stamp collected";
+  const alone = after.length < 2;
+  const headline = alone ? "Stamp collected" : passed.length ? `You passed ${passed.map(m => m.name).join(" and ")}` : me?.rank === 1 ? "Still on top" : "Stamp collected";
 
   return (
     <Paper>
@@ -56,7 +59,7 @@ export function Verified({ result }: { result: Result }) {
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.lg, alignItems: "center" }} showsVerticalScrollIndicator={false}>
         <Text variant="label" color={colors.leaf}>Sidequest complete</Text>
         <View style={[styles.card, { width: cardWidth }]}>
-          <Image source={postcard.photo} style={[styles.photo, { height: cardWidth * 1.08 }]} />
+          <Photo source={postcard.photo} style={[styles.photo, { height: cardWidth * 1.08 }]} />
           <View style={styles.caption}>
             <Text variant="heading">{postcard.landmark.name}</Text>
             <Text variant="small" color={colors.muted}>{postcard.landmark.neighborhood} · {formatTimeOfDay(postcard.completedAt)}</Text>
@@ -84,11 +87,18 @@ export function Verified({ result }: { result: Result }) {
         <Animated.View style={[styles.below, { opacity: rise, transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }]}>
           <Text variant="display" align="center">{headline}</Text>
           <Text variant="body" color={colors.inkSoft} align="center">
-            {payout.leading
+            {alone
+              ? `${me?.completed ?? 1} ${me?.completed === 1 ? "stamp" : "stamps"} this week. Invite friends to turn it into a race for the pot.`
+              : payout.leading
               ? `You lead the ${money(data.potCents)} pot${payout.leaders > 1 ? `, split ${payout.leaders} ways right now` : ""}.`
               : `${ordinal(me?.rank ?? 0)} of ${after.length} with ${me?.completed} stamps. The ${money(data.potCents)} pot pays the leader Sunday.`}
           </Text>
 
+          {alone ? (
+            <View style={styles.invite}>
+              <InviteCard data={data} title="Make it a race" body={`Everyone puts ${money(data.stakeCents)} in. Most stamps by Sunday takes the pot.`} />
+            </View>
+          ) : (
           <View style={styles.board}>
             {after.slice(0, 4).map(s => {
               const old = before.find(b => b.member.id === s.member.id)?.rank ?? s.rank;
@@ -104,7 +114,8 @@ export function Verified({ result }: { result: Result }) {
               );
             })}
           </View>
-          {was && me && was.rank !== me.rank && <Text variant="small" color={colors.muted} align="center">Up from {ordinal(was.rank)} before this stamp</Text>}
+          )}
+          {!alone && was && me && was.rank !== me.rank && <Text variant="small" color={colors.muted} align="center">Up from {ordinal(was.rank)} before this stamp</Text>}
           <View style={styles.cta}>
             <Button label="Back to waiting" onPress={() => dispatch({ type: "DONE" })} />
           </View>
@@ -125,5 +136,6 @@ const styles = StyleSheet.create({
   rowMine: { backgroundColor: colors.leafSoft },
   rank: { width: 20 },
   flex: { flex: 1 },
+  invite: { marginHorizontal: -space.lg, marginTop: space.sm },
   cta: { marginTop: space.md },
 });

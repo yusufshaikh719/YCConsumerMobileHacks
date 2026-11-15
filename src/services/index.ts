@@ -1,4 +1,5 @@
-import { createFixtureService } from "./fixtureService";
+import { createLocalService } from "./localService";
+import { deviceStorage } from "./storage";
 
-export const ante = createFixtureService();
+export const ante = createLocalService({ storage: deviceStorage() });
 export type { AnteService } from "./types";

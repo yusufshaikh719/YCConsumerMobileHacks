@@ -15,21 +15,33 @@ function atMinute(day: number, minute: number) {
   return d.getTime();
 }
 
-export function isInWindow(window: FreeWindow, at: number) {
+export function activeWindow(windows: FreeWindow[], at: number) {
   const m = minuteOfDay(at);
-  return m >= window.startMinute && m < window.endMinute;
+  return windows.find(w => m >= w.startMinute && m < w.endMinute) ?? null;
 }
 
-export function nextWindowStart(window: FreeWindow, at: number) {
-  const today = atMinute(at, window.startMinute);
-  return today > at ? today : atMinute(at + DAY, window.startMinute);
+export const isInWindows = (windows: FreeWindow[], at: number) => activeWindow(windows, at) !== null;
+
+export function nextWindowStart(windows: FreeWindow[], at: number) {
+  const starts = [0, 1].flatMap(day => windows.map(w => atMinute(at + day * DAY, w.startMinute))).filter(start => start > at);
+  return starts.length ? Math.min(...starts) : null;
 }
 
-export function pickPingTime(window: FreeWindow, now: number, random: () => number = Math.random) {
-  const todayEnd = atMinute(now, window.endMinute) - PING_LEAD_MS;
-  const todayStart = Math.max(atMinute(now, window.startMinute), now + PING_LEAD_MS);
-  const [start, end] = todayStart < todayEnd ? [todayStart, todayEnd] : [nextWindowStart(window, now + 1), atMinute(nextWindowStart(window, now + 1), window.endMinute) - PING_LEAD_MS];
-  return Math.floor(start + random() * Math.max(0, end - start));
+export function pickPingTime(windows: FreeWindow[], now: number, random: () => number = Math.random) {
+  for (const day of [0, 1]) {
+    const spans = windows
+      .map(w => [Math.max(atMinute(now + day * DAY, w.startMinute), now + PING_LEAD_MS), atMinute(now + day * DAY, w.endMinute) - PING_LEAD_MS] as const)
+      .filter(([start, end]) => end > start)
+      .sort((a, b) => a[0] - b[0]);
+    const total = spans.reduce((sum, [start, end]) => sum + end - start, 0);
+    if (!total) continue;
+    let offset = Math.min(random(), 0.999999) * total;
+    for (const [start, end] of spans) {
+      if (offset < end - start) return Math.floor(start + offset);
+      offset -= end - start;
+    }
+  }
+  return null;
 }
 
 export function formatClock(minute: number) {

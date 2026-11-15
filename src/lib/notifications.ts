@@ -29,6 +29,11 @@ export async function enableNotifications() {
   }
 }
 
+export async function notificationsGranted() {
+  if (!supported) return false;
+  return Notifications.getPermissionsAsync().then(p => p.granted).catch(() => false);
+}
+
 export async function schedulePing(pingAt: number) {
   if (!supported) return;
   await Notifications.cancelAllScheduledNotificationsAsync();
