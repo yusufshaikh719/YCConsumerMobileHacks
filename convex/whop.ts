@@ -19,7 +19,7 @@ export const createPremiumCheckout = action({
     let checkout;
     try {
       checkout = await client.checkoutConfigurations.create({
-        variant: { title: "Stakes Premium", billing_type: "one_time", initial_price: 10, currency: "usd" },
+        variant: { title: "Ante Premium", billing_type: "one_time", initial_price: 10, currency: "usd" },
         metadata: { userId, purchaseId, purpose: "premium" },
       });
     } catch {

@@ -57,7 +57,7 @@ export default function HomeScreen() {
     <View style={styles.shell}>
       <View style={styles.header}>
         <View style={styles.brandRow}>
-          <View style={styles.logo}><Text style={styles.logoText}>S</Text></View><Text style={styles.brand}>stakes.</Text>
+          <View style={styles.logo}><Text style={styles.logoText}>A</Text></View><Text style={styles.brand}>ante.</Text>
           <Pressable onPress={() => { tap(); setSelector(selector === "pot" ? null : "pot"); }} style={styles.potSelect}><Text numberOfLines={1} style={styles.potSelectText}>{dashboard?.pot.title ?? "Your pots"}  ⌄</Text></Pressable>
         </View>
         <View style={styles.contextRow}>

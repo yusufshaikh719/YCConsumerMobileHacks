@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Stakes",
-    "slug": "stakes-habit-pot",
-    "scheme": "stakes",
+    "name": "Ante",
+    "slug": "ante",
+    "scheme": "ante",
     "version": "1.0.0",
     "orientation": "portrait",
     "android": {
-      "package": "com.stakes.habitpot",
+      "package": "com.ante.habitpot",
       "permissions": ["android.permission.CAMERA"]
     },
     "plugins": [
@@ -14,7 +14,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Stakes to access your camera to submit habit proof.",
+          "cameraPermission": "Allow Ante to access your camera to submit habit proof.",
           "recordAudioAndroid": false
         }
       ],

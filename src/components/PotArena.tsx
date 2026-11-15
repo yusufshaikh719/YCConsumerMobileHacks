@@ -134,7 +134,7 @@ export default function PotArena({ potId, userId, onCamera, onCreate, onDemo }: 
           })}{latestSettlement.loserUserIds.filter(id => !latestSettlement.winnerUserIds.includes(id)).map(id => <View key={id} style={styles.transfer}><Text style={styles.transferName}>{leaderboard.find(player => player.userId === id)?.user?.name ?? "Player"} · forfeited</Text><Text style={[styles.transferAmount, { marginLeft: "auto" }]}>{money(0)}</Text></View>)}{member?.user && <Text style={styles.wallet}>Your simulated wallet balance  {money(member.user.simulatedWalletBalanceCents)}</Text>}</View>
         </>}
 
-        <View style={styles.footer}><Ionicons name="lock-closed-outline" size={13} color="#82887b" /><Text style={styles.footerText}> Stakes powered by Whop</Text></View>
+        <View style={styles.footer}><Ionicons name="lock-closed-outline" size={13} color="#82887b" /><Text style={styles.footerText}> Ante powered by Whop</Text></View>
       </ScrollView>
       <View style={styles.actionBar}><Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSubmit }} onPress={onCamera} disabled={!canSubmit} style={[styles.primaryButton, !canSubmit && styles.primaryDisabled]}><Ionicons name={canSubmit ? "camera-outline" : "checkmark-circle-outline"} size={21} color={canSubmit ? "#11150d" : "#a0a59a"} /><Text style={[styles.primaryText, !canSubmit && styles.disabledText]}>{actionLabel}</Text>{canSubmit && <Ionicons name="arrow-forward" size={20} color="#11150d" />}</Pressable>{hasPassed && pot.status === "active" && <Pressable accessibilityRole="button" onPress={onDemo} style={styles.nextDay}><Text style={styles.nextDayText}>Open demo controls to advance the day →</Text></Pressable>}</View>
     </View>

@@ -1,4 +1,4 @@
-# Stakes / Habit Pot — YC Consumer Mobile Hackathon
+# Ante / Habit Pot — YC Consumer Mobile Hackathon
 
 ## Whop premium paywall
 
