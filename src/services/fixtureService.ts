@@ -1,4 +1,5 @@
 import { distanceMeters } from "../lib/geo";
+import { insideGeofence } from "../lib/geofence";
 import { PING_LEAD_MS, pickPingTime } from "../lib/time";
 import { ME_ID, STAKE_CENTS, group, myQuestPhoto, seedPostcards, todaysQuest, weekEndsAt } from "./fixtures";
 import { rankStandings } from "./standings";
@@ -7,7 +8,7 @@ import type { AnteService, AnteSnapshot, FreeWindow, Postcard, Sidequest } from 
 const VERIFY_DELAY_MS = 2600;
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export function createFixtureService(now = Date.now()): AnteService & { failNextVerification(): void } {
+export function createFixtureService(now = Date.now(), verifyDelayMs = VERIFY_DELAY_MS): AnteService & { failNextVerification(): void } {
   const listeners = new Set<() => void>();
   let failNext = false;
   let postcards = seedPostcards(now);
@@ -66,8 +67,8 @@ export function createFixtureService(now = Date.now()): AnteService & { failNext
       };
     },
     async verifyArrival(quest, photoUri, position) {
-      await wait(VERIFY_DELAY_MS);
-      const inside = distanceMeters(position, quest.landmark.coords) <= quest.landmark.radiusMeters * 1.5;
+      await wait(verifyDelayMs);
+      const inside = insideGeofence(position, quest.landmark, 1.5);
       if (failNext || !inside) {
         failNext = false;
         return { ok: false, reason: "not_verified" };

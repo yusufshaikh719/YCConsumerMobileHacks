@@ -2,9 +2,10 @@ import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Platform } from "react-native";
 import { devToolsEnabled } from "../dev/enabled";
-import { distanceMeters } from "../lib/geo";
+import { insideGeofence } from "../lib/geofence";
 import { cancelPing, enableNotifications, onPingNotification, schedulePing } from "../lib/notifications";
-import { simulatedPosition, useDevicePosition, useHeading } from "../lib/position";
+import { useDevicePosition, useHeading } from "../lib/position";
+import { simulatedPosition } from "../lib/simulatedWalk";
 import { PING_LEAD_MS } from "../lib/time";
 import { useNow } from "../lib/useNow";
 import { ante } from "../services";
@@ -91,7 +92,7 @@ export function AnteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (phase.name !== "live" || !position) return;
-    if (distanceMeters(position, phase.quest.landmark.coords) <= phase.quest.landmark.radiusMeters) dispatch({ type: "ARRIVE" });
+    if (insideGeofence(position, phase.quest.landmark)) dispatch({ type: "ARRIVE" });
   }, [phase, position]);
 
   const positionRef = useRef(position);

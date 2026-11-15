@@ -1,15 +1,7 @@
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
-import type { LatLng, Sidequest } from "../services/types";
-import { stepToward, distanceMeters } from "./geo";
-
-export const SIMULATED_WALK_MS = 150_000;
-
-export function simulatedPosition(quest: Sidequest, now: number): LatLng {
-  const progress = Math.max(0, Math.min(1, (now - quest.revealAt) / SIMULATED_WALK_MS));
-  return stepToward(quest.origin, quest.landmark.coords, distanceMeters(quest.origin, quest.landmark.coords) * progress);
-}
+import type { LatLng } from "../services/types";
 
 export function useDevicePosition(active: boolean) {
   const [position, setPosition] = useState<LatLng | null>(null);
