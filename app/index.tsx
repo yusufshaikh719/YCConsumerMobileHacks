@@ -1,14 +1,18 @@
+import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View } from "react-native";
 import { Paper } from "../src/components/Paper";
+import { useAnte } from "../src/state/AnteProvider";
 import { Text } from "../src/theme/Text";
 import { colors } from "../src/theme/tokens";
 
 export default function Home() {
+  const { phase } = useAnte();
+  const dark = phase.name === "ping" || phase.name === "live";
   return (
-    <Paper>
+    <Paper tone={dark ? "moss" : "paper"}>
+      <StatusBar style={dark ? "light" : "dark"} />
       <View style={styles.center}>
-        <Text variant="hero">ANTE</Text>
-        <Text variant="label" color={colors.muted}>Sidequests, weekly pot</Text>
+        <Text variant="hero" color={dark ? colors.onMoss : colors.ink}>{phase.name.toUpperCase()}</Text>
       </View>
     </Paper>
   );
