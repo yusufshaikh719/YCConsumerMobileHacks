@@ -1,8 +1,9 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
 import { ANTE_REACTIONS, ANTE_STAKE_CENTS, DAY_MS, WEEK_MS, landmark } from "./lib/contracts";
+import { assessLandmarkPhoto, type LiveResult } from "./mapReferee";
 import { joinPendingCheckout, uniqueInviteCode } from "./pots";
 import { haversineMeters } from "./sidequests";
 
@@ -99,17 +100,19 @@ export const startQuest = mutation({
   },
 });
 
-export const completeQuest = mutation({
-  args: { deviceId: v.string(), sidequestId: v.id("sidequests"), lat: v.number(), lng: v.number(), accuracy: v.optional(v.number()), photoStorageId: v.optional(v.id("_storage")) },
-  handler: async (ctx, args): Promise<{ ok: true; stampId: Id<"stamps"> } | { ok: false; reason: "expired" | "outside_geofence" | "not_active"; distanceMeters?: number }> => {
+type Arrival = { ok: true; stampId: Id<"stamps">; verifiedBy: "photo_ai" | "gps_only"; note?: string } | { ok: false; reason: "expired" | "outside_geofence" | "not_active" | "photo_rejected"; distanceMeters?: number; note?: string };
+const verification = v.object({ mode: v.union(v.literal("photo_ai"), v.literal("gps_only")), confidence: v.optional(v.number()), note: v.optional(v.string()) });
+
+export const checkArrival = internalMutation({
+  args: { deviceId: v.string(), sidequestId: v.id("sidequests"), lat: v.number(), lng: v.number(), accuracy: v.optional(v.number()) },
+  handler: async (ctx, args): Promise<Arrival | { ok: "check"; userId: Id<"users">; distanceMeters: number; destName: string; destSummary: string; radiusMeters: number }> => {
     const user = await requireUser(ctx, args.deviceId);
     const quest = await ctx.db.get(args.sidequestId);
     if (!quest || quest.userId !== user._id || !quest.anteLandmark) throw new Error("Sidequest not found");
     const stamped = await ctx.db.query("stamps").withIndex("by_sidequest", q => q.eq("sidequestId", quest._id)).unique();
-    if (stamped) return { ok: true, stampId: stamped._id };
+    if (stamped) return { ok: true, stampId: stamped._id, verifiedBy: stamped.verification?.mode ?? "gps_only" };
     if (quest.status !== "active") return { ok: false, reason: "not_active" };
-    const now = Date.now();
-    if (now > quest.expiresAt + 2 * 60_000) {
+    if (Date.now() > quest.expiresAt + 2 * 60_000) {
       await ctx.db.patch(quest._id, { status: "failed_timeout" });
       return { ok: false, reason: "expired" };
     }
@@ -118,16 +121,64 @@ export const completeQuest = mutation({
     const accuracy = Math.min(500, Math.max(0, args.accuracy ?? 0));
     const distanceMeters = haversineMeters(args.lat, args.lng, quest.destLat, quest.destLng);
     if (distanceMeters > radius * Math.max(1.5, 1 + Math.min(1, accuracy / radius))) return { ok: false, reason: "outside_geofence", distanceMeters: Math.round(distanceMeters) };
+    return { ok: "check", userId: user._id, distanceMeters: Math.round(distanceMeters), destName: quest.destName, destSummary: quest.destSummary, radiusMeters: radius };
+  },
+});
+
+export const recordArrival = internalMutation({
+  args: { userId: v.id("users"), sidequestId: v.id("sidequests"), distanceMeters: v.number(), photoStorageId: v.optional(v.id("_storage")), verification },
+  handler: async (ctx, args): Promise<Id<"stamps">> => {
+    const quest = await ctx.db.get(args.sidequestId);
+    if (!quest || quest.userId !== args.userId || !quest.anteLandmark) throw new Error("Sidequest not found");
+    const stamped = await ctx.db.query("stamps").withIndex("by_sidequest", q => q.eq("sidequestId", quest._id)).unique();
+    if (stamped) return stamped._id;
     const pot = await ctx.db.get(quest.potId);
-    if (!pot || !await membershipFor(ctx, pot._id, user._id)) throw new Error("Not a member of this group");
-    const completedAt = Math.min(now, quest.expiresAt);
+    if (!pot || !await membershipFor(ctx, pot._id, args.userId)) throw new Error("Not a member of this group");
+    const completedAt = Math.min(Date.now(), quest.expiresAt);
     const stampId = await ctx.db.insert("stamps", {
-      potId: pot._id, userId: user._id, sidequestId: quest._id, weekEndsAt: pot.nextDeadlineAt, landmark: quest.anteLandmark,
-      ...(args.photoStorageId ? { photoStorageId: args.photoStorageId } : {}), distanceMeters: Math.round(distanceMeters), completedAt,
-      minutesTaken: Math.max(1, Math.round((completedAt - quest.startsAt) / 60_000)),
+      potId: pot._id, userId: args.userId, sidequestId: quest._id, weekEndsAt: pot.nextDeadlineAt, landmark: quest.anteLandmark,
+      ...(args.photoStorageId ? { photoStorageId: args.photoStorageId } : {}), distanceMeters: args.distanceMeters, completedAt,
+      minutesTaken: Math.max(1, Math.round((completedAt - quest.startsAt) / 60_000)), verification: args.verification,
     });
     await ctx.db.patch(quest._id, { status: "completed", completedAt });
-    return { ok: true, stampId };
+    return stampId;
+  },
+});
+
+export const getPhotoUrl = internalQuery({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, { storageId }) => await ctx.storage.getUrl(storageId),
+});
+
+export const submitArrival = action({
+  args: { deviceId: v.string(), sidequestId: v.id("sidequests"), lat: v.number(), lng: v.number(), accuracy: v.optional(v.number()), photoStorageId: v.optional(v.id("_storage")) },
+  handler: async (ctx, { photoStorageId, ...position }): Promise<Arrival> => {
+    const check = await ctx.runMutation(internal.ante.checkArrival, position);
+    if (check.ok !== "check") return check;
+    const imageUrl = photoStorageId ? await ctx.runQuery(internal.ante.getPhotoUrl, { storageId: photoStorageId }) : null;
+    let live: LiveResult | null = null;
+    if (imageUrl && (process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)) {
+      const prompt = `This is an arrival selfie for a walking sidequest to ${check.destName}. About the place: ${check.destSummary || "no description"}. GPS puts the player ${check.distanceMeters}m from it (target radius ${check.radiusMeters}m). The player's face may fill much of the frame. Set landmarkPassed to true when the background plausibly shows ${check.destName} or its immediate outdoor surroundings, and false when it clearly shows somewhere unrelated, such as an indoor room. Set visualSpoofDetected to true only for clear signs of a fake: a photo of a screen or print, or an obviously edited image. Return only JSON with landmarkPassed (boolean), visualSpoofDetected (boolean), visualSpoofReasons (array of concise strings), confidence (0 to 1), and roastMessage (one short playful sentence about the photo).`;
+      const signal = AbortSignal.timeout(12_000);
+      try {
+        live = await Promise.race([
+          assessLandmarkPhoto(imageUrl, prompt, signal),
+          new Promise<never>((_, reject) => signal.addEventListener("abort", () => reject(new Error("Photo check timed out")), { once: true })),
+        ]);
+      } catch (error) {
+        console.warn("Selfie check unavailable; recording a GPS-only verification", error instanceof Error ? error.message : error);
+        live = null;
+      }
+    }
+    if (live && (live.visualSpoofDetected || !live.landmarkPassed)) {
+      return { ok: false, reason: "photo_rejected", note: live.visualSpoofReasons.join(", ") || live.roastMessage.trim().slice(0, 200) };
+    }
+    const note = live?.roastMessage.trim().slice(0, 200);
+    const stampId = await ctx.runMutation(internal.ante.recordArrival, {
+      userId: check.userId, sidequestId: position.sidequestId, distanceMeters: check.distanceMeters, ...(photoStorageId ? { photoStorageId } : {}),
+      verification: live ? { mode: "photo_ai", confidence: Math.max(0, Math.min(1, live.confidence)), ...(note ? { note } : {}) } : { mode: "gps_only" },
+    });
+    return { ok: true, stampId, verifiedBy: live ? "photo_ai" : "gps_only", ...(note ? { note } : {}) };
   },
 });
 
@@ -157,7 +208,7 @@ export const getGroup = query({
     })));
     const stampRows = await ctx.db.query("stamps").withIndex("by_pot_week", q => q.eq("potId", potId).eq("weekEndsAt", pot.nextDeadlineAt)).collect();
     const stamps = await Promise.all(stampRows.map(async stamp => ({
-      id: stamp._id, userId: stamp.userId, landmark: stamp.landmark, completedAt: stamp.completedAt, minutesTaken: stamp.minutesTaken,
+      id: stamp._id, userId: stamp.userId, landmark: stamp.landmark, completedAt: stamp.completedAt, minutesTaken: stamp.minutesTaken, verifiedBy: stamp.verification?.mode ?? "gps_only",
       photoUrl: stamp.photoStorageId ? await ctx.storage.getUrl(stamp.photoStorageId) : null,
       reactions: (await ctx.db.query("stampReactions").withIndex("by_stamp", q => q.eq("stampId", stamp._id)).collect()).map(r => ({ userId: r.userId, reaction: r.reaction })),
     })));

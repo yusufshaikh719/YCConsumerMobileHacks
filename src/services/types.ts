@@ -29,6 +29,7 @@ export type Postcard = {
   completedAt: number;
   minutesTaken: number;
   reactions: Record<Reaction, string[]>;
+  verifiedBy?: "photo_ai" | "gps_only";
 };
 
 export type Standing = { member: Member; completed: number; minutes: number; rank: number };

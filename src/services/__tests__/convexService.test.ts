@@ -20,7 +20,11 @@ function connect(t: TestConvex<typeof schema>) {
   };
   const backend = {
     query: (ref: any, args: any) => t.query(ref, args),
-    action: (ref: any, args: any) => t.action(ref, args),
+    action: async (ref: any, args: any) => {
+      const result = await t.action(ref, args);
+      await refresh();
+      return result;
+    },
     mutation: async (ref: any, args: any) => {
       const result = await t.mutation(ref, args);
       await refresh();
@@ -138,6 +142,7 @@ describe("convex service shared standings", () => {
     expect(seen.postcards).toHaveLength(1);
     expect(seen.postcards[0]).toMatchObject({ memberId: a.service.getSnapshot().meId, landmark: { thumbnail: { uri: expect.stringContaining("wikimedia") } } });
     expect(seen.postcards[0].photo).toMatchObject({ uri: expect.any(String) });
+    expect(seen.postcards[0].verifiedBy).toBe("gps_only");
     expect(seen.standings[0].member.fullName).toBe("Aahil");
     await complete(b.service, null);
     const { result } = await complete(b.service, null);

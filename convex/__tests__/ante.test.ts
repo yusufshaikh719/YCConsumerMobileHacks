@@ -28,10 +28,10 @@ async function group(t: Backend) {
   return { ...created, joined };
 }
 
-async function stamp(t: Backend, deviceId: string, potId: Id<"pots">, position = landmark) {
+async function stamp(t: Backend, deviceId: string, potId: Id<"pots">, position = landmark, photoStorageId?: Id<"_storage">) {
   const sidequestId = await t.mutation(api.ante.startQuest, { deviceId, potId, landmark, originLat: origin.lat, originLng: origin.lng, pingAt: Date.now() - 60_000, revealAt: Date.now(), expiresAt: Date.now() + 25 * 60_000 });
   vi.advanceTimersByTime(12 * 60_000);
-  return await t.mutation(api.ante.completeQuest, { deviceId, sidequestId, lat: position.lat, lng: position.lng, accuracy: 8 });
+  return await t.action(api.ante.submitArrival, { deviceId, sidequestId, lat: position.lat, lng: position.lng, accuracy: 8, ...(photoStorageId ? { photoStorageId } : {}) });
 }
 
 async function fund(t: Backend, potId: Id<"pots">, deviceId: string, paymentId: string, whopUser: string) {
@@ -120,7 +120,7 @@ describe("shared stamps", () => {
     expect(await stamp(t, "device-aahil-1", potId, { ...landmark, lat: landmark.lat - 0.002 })).toMatchObject({ ok: false, reason: "outside_geofence" });
     const sidequestId = await t.mutation(api.ante.startQuest, { deviceId: "device-aahil-1", potId, landmark: { ...landmark, id: "wiki-43" }, originLat: origin.lat, originLng: origin.lng, pingAt: Date.now(), revealAt: Date.now(), expiresAt: Date.now() + 20 * 60_000 });
     vi.advanceTimersByTime(30 * 60_000);
-    expect(await t.mutation(api.ante.completeQuest, { deviceId: "device-aahil-1", sidequestId, lat: landmark.lat, lng: landmark.lng })).toEqual({ ok: false, reason: "expired" });
+    expect(await t.action(api.ante.submitArrival, { deviceId: "device-aahil-1", sidequestId, lat: landmark.lat, lng: landmark.lng })).toEqual({ ok: false, reason: "expired" });
     expect((await t.query(api.ante.getGroup, { deviceId: "device-aahil-1", potId }))!.stamps).toEqual([]);
   });
 
@@ -128,6 +128,51 @@ describe("shared stamps", () => {
     const t = convexTest(schema, modules);
     const { potId } = await group(t);
     await expect(t.mutation(api.ante.startQuest, { deviceId: "device-aahil-1", potId, landmark, originLat: landmark.lat, originLng: landmark.lng, pingAt: Date.now(), revealAt: Date.now(), expiresAt: Date.now() + 20 * 60_000 })).rejects.toThrow("not a real walk away");
+  });
+});
+
+describe("selfie referee", () => {
+  function openai(verdict: object) {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      expect(request.url).toBe("https://api.openai.com/v1/chat/completions");
+      const body = await request.json();
+      expect(body.model).toBe("gpt-4o-mini");
+      expect(body.messages[0].content[0].text).toContain("arrival selfie for a walking sidequest to Old Mill Fountain");
+      expect(body.messages[0].content[1].image_url.url).toEqual(expect.any(String));
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ visualSpoofReasons: [], confidence: 0.86, roastMessage: "Fountain confirmed, hair questionable.", ...verdict }) } }] }));
+    });
+    vi.stubEnv("OPENAI_API_KEY", "test_openai_key");
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("stamps a selfie the VLM accepts and records it as an AI photo check", async () => {
+    const t = convexTest(schema, modules);
+    const { potId } = await group(t);
+    const fetchMock = openai({ landmarkPassed: true, visualSpoofDetected: false });
+    const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
+    expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toMatchObject({ ok: true, verifiedBy: "photo_ai", note: "Fountain confirmed, hair questionable." });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect((await t.query(api.ante.getGroup, { deviceId: "device-yusuf-1", potId }))!.stamps[0]).toMatchObject({ verifiedBy: "photo_ai", photoUrl: expect.any(String) });
+  });
+
+  it("rejects a selfie the VLM flags, and stamps nothing", async () => {
+    const t = convexTest(schema, modules);
+    const { potId } = await group(t);
+    openai({ landmarkPassed: true, visualSpoofDetected: true, visualSpoofReasons: ["photo of a screen"] });
+    const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
+    expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toEqual({ ok: false, reason: "photo_rejected", note: "photo of a screen" });
+    expect((await t.query(api.ante.getGroup, { deviceId: "device-aahil-1", potId }))!.stamps).toEqual([]);
+  });
+
+  it("falls back to a GPS-only stamp, labeled as such, when the VLM call fails", async () => {
+    const t = convexTest(schema, modules);
+    const { potId } = await group(t);
+    vi.stubEnv("OPENAI_API_KEY", "test_openai_key");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("upstream down", { status: 502 })));
+    const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
+    expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toMatchObject({ ok: true, verifiedBy: "gps_only" });
   });
 });
 

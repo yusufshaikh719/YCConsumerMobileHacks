@@ -60,6 +60,7 @@ function toPostcard(stamp: Group["stamps"][number]): Postcard {
     completedAt: stamp.completedAt,
     minutesTaken: stamp.minutesTaken,
     reactions,
+    verifiedBy: stamp.verifiedBy,
   };
 }
 
@@ -274,7 +275,7 @@ export function createConvexService({
         }
       }
       try {
-        const result = await client.mutation(api.ante.completeQuest, {
+        const result = await client.action(api.ante.submitArrival, {
           deviceId: saved.deviceId,
           sidequestId: quest.id as Id<"sidequests">,
           lat: position.lat,
