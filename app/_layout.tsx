@@ -1,10 +1,9 @@
 import { Stack } from "expo-router";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { StatusBar } from "expo-status-bar";
 
-const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
-const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
+const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL || "https://brilliant-crow-271.convex.cloud");
 
 export default function RootLayout() {
-  const routes = <Stack />;
-  return convex ? <ConvexProvider client={convex}>{routes}</ConvexProvider> : routes;
+  return <ConvexProvider client={convex}><StatusBar style="light" /><Stack screenOptions={{ headerShown: false }} /></ConvexProvider>;
 }
