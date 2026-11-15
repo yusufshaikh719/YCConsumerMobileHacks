@@ -45,7 +45,7 @@ describe("premium checkout", () => {
       expect(request.url).toBe("https://sandbox-api.whop.com/api/v1/checkout_configurations");
       expect(request.headers.get("authorization")).toBe("Bearer test_api_key");
       expect(await request.json()).toMatchObject({
-        variant: { title: "Stakes Premium", initial_price: 10, currency: "usd", billing_type: "one_time" },
+        variant: { title: "Ante Premium", initial_price: 10, currency: "usd", billing_type: "one_time" },
         metadata: { userId, purpose: "premium", purchaseId: expect.any(String) },
       });
       return new Response(JSON.stringify({ id: "ch_premium", purchase_url: "https://sandbox.whop.com/checkout/premium" }), {

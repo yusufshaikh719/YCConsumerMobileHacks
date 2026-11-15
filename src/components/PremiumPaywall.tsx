@@ -34,7 +34,7 @@ export default function PremiumPaywall({ userId }: { userId: Id<"users"> }) {
   };
 
   return <ScrollView contentContainerStyle={styles.container}>
-    <Text style={styles.eyebrow}>STAKES PREMIUM</Text>
+    <Text style={styles.eyebrow}>ANTE PREMIUM</Text>
     <Text style={styles.title}>Make it count.</Text>
     <Text style={styles.description}>Unlock your arena, daily proof, and pot chat with a one-time premium purchase.</Text>
     <Text style={styles.price}>$10 <Text style={styles.once}>/ one time</Text></Text>
