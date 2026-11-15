@@ -1,28 +1,85 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { DEFAULT_STAKE_CENTS, habitCategory, nextCutoff, persona, transferMode, transferStatus } from "./lib/contracts";
 
+const inviteUrl = (code: string) => `https://ante.app/join/${code}`;
+const normalizeHandle = (handle: string) => handle.trim().replace(/^@/, "").toLowerCase();
+
+async function joinPendingCheckout(ctx: MutationCtx, potId: Id<"pots">, userId: Id<"users">) {
+  const pot = await ctx.db.get(potId);
+  if (!pot || (pot.status !== "open" && pot.status !== "active") || pot.currentDayIndex !== 1 || Date.now() >= pot.nextDeadlineAt) throw new Error("Pot is not accepting members");
+  if (!await ctx.db.get(userId)) throw new Error("User not found");
+  const existing = await ctx.db.query("memberships").withIndex("by_pot_user", q => q.eq("potId", potId).eq("userId", userId)).unique();
+  if (existing) return existing._id;
+  return await ctx.db.insert("memberships", { potId, userId, stakeStatus: "pending_checkout", streakCount: 0, completedDays: [], missedDays: [], joinedAt: Date.now() });
+}
+
 export const createPot = mutation({
-  args: { title: v.string(), habitCategory, habitPrompt: v.string(), createdByUserId: v.id("users"), stakeCents: v.optional(v.number()), dailyCutoffHourUtc: v.optional(v.number()), roastPersona: v.optional(persona) },
+  args: { title: v.string(), habitCategory, habitPrompt: v.string(), createdByUserId: v.id("users"), stakeCents: v.optional(v.number()), dailyCutoffHourUtc: v.optional(v.number()), roastPersona: v.optional(persona), challengeMode: v.optional(v.union(v.literal("sidequest"), v.literal("habit_photo"))), invitedHandles: v.optional(v.array(v.string())), invitedUserIds: v.optional(v.array(v.id("users"))) },
   handler: async (ctx, args) => {
     if (!await ctx.db.get(args.createdByUserId)) throw new Error("Creator not found");
     const stake = args.stakeCents ?? DEFAULT_STAKE_CENTS;
     const hour = args.dailyCutoffHourUtc ?? 7;
     if (!args.title.trim() || !args.habitPrompt.trim() || !Number.isSafeInteger(stake) || stake <= 0 || !Number.isInteger(hour) || hour < 0 || hour > 23) throw new Error("Invalid pot details");
+    const handles = [...new Set((args.invitedHandles ?? []).map(normalizeHandle))];
+    if (handles.some(handle => !handle)) throw new Error("Invalid friend handle");
+    const userIds = new Set(args.invitedUserIds ?? []);
+    for (const userId of userIds) if (!await ctx.db.get(userId)) throw new Error("Invited user not found");
     const now = Date.now();
-    return await ctx.db.insert("pots", { title: args.title.trim(), habitCategory: args.habitCategory, habitPrompt: args.habitPrompt.trim(), createdByUserId: args.createdByUserId, stakeCents: stake, dailyCutoffHourUtc: hour, roastPersona: args.roastPersona ?? "drill_sergeant", status: "open", currentDayIndex: 1, nextDeadlineAt: nextCutoff(now, hour), potTotalCents: 0, forfeitedCents: 0, createdAt: now });
+    for (const handle of handles) {
+      const existing = await ctx.db.query("users").withIndex("by_handle", q => q.eq("handle", handle)).unique();
+      userIds.add(existing?._id ?? await ctx.db.insert("users", { name: handle, handle, simulatedWalletBalanceCents: 0, createdAt: now }));
+    }
+    let inviteCode: string | undefined;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const candidate = Math.floor(Math.random() * 36 ** 6).toString(36).toUpperCase().padStart(6, "0");
+      if (!await ctx.db.query("pots").withIndex("by_invite_code", q => q.eq("inviteCode", candidate)).first()) {
+        inviteCode = candidate;
+        break;
+      }
+    }
+    if (!inviteCode) throw new Error("Could not generate a unique invite code");
+    const potId = await ctx.db.insert("pots", { title: args.title.trim(), habitCategory: args.habitCategory, habitPrompt: args.habitPrompt.trim(), createdByUserId: args.createdByUserId, stakeCents: stake, dailyCutoffHourUtc: hour, roastPersona: args.roastPersona ?? "drill_sergeant", challengeMode: args.challengeMode ?? "sidequest", inviteCode, invitedHandles: handles, status: "open", currentDayIndex: 1, nextDeadlineAt: nextCutoff(now, hour), potTotalCents: 0, forfeitedCents: 0, createdAt: now });
+    for (const userId of userIds) await joinPendingCheckout(ctx, potId, userId);
+    return potId;
   },
 });
 
 export const joinPotPendingCheckout = mutation({
   args: { potId: v.id("pots"), userId: v.id("users") },
   handler: async (ctx, { potId, userId }) => {
-    const pot = await ctx.db.get(potId);
-    if (!pot || (pot.status !== "open" && pot.status !== "active") || pot.currentDayIndex !== 1 || Date.now() >= pot.nextDeadlineAt) throw new Error("Pot is not accepting members");
-    if (!await ctx.db.get(userId)) throw new Error("User not found");
-    const existing = await ctx.db.query("memberships").withIndex("by_pot_user", q => q.eq("potId", potId).eq("userId", userId)).unique();
-    if (existing) return existing._id;
-    return await ctx.db.insert("memberships", { potId, userId, stakeStatus: "pending_checkout", streakCount: 0, completedDays: [], missedDays: [], joinedAt: Date.now() });
+    return await joinPendingCheckout(ctx, potId, userId);
+  },
+});
+
+export const createOrGetFriend = mutation({
+  args: { name: v.string(), handle: v.string() },
+  handler: async (ctx, { name, handle }) => {
+    const normalizedHandle = normalizeHandle(handle);
+    if (!name.trim() || !normalizedHandle) throw new Error("Invalid friend details");
+    const existing = await ctx.db.query("users").withIndex("by_handle", q => q.eq("handle", normalizedHandle)).unique();
+    return existing?._id ?? await ctx.db.insert("users", { name: name.trim(), handle: normalizedHandle, simulatedWalletBalanceCents: 0, createdAt: Date.now() });
+  },
+});
+
+export const getPotByInviteCode = query({
+  args: { inviteCode: v.string() },
+  handler: async (ctx, { inviteCode }) => {
+    const code = inviteCode.trim().toUpperCase();
+    const pot = await ctx.db.query("pots").withIndex("by_invite_code", q => q.eq("inviteCode", code)).unique();
+    return pot ? { ...pot, inviteUrl: inviteUrl(code) } : null;
+  },
+});
+
+export const joinPotByInviteCode = mutation({
+  args: { inviteCode: v.string(), userId: v.id("users") },
+  handler: async (ctx, { inviteCode, userId }) => {
+    const code = inviteCode.trim().toUpperCase();
+    const pot = await ctx.db.query("pots").withIndex("by_invite_code", q => q.eq("inviteCode", code)).unique();
+    if (!pot) throw new Error("Invite code not found");
+    const membershipId = await joinPendingCheckout(ctx, pot._id, userId);
+    return { potId: pot._id, membershipId, inviteUrl: inviteUrl(code), stakeCents: pot.stakeCents };
   },
 });
 

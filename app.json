@@ -7,7 +7,11 @@
     "orientation": "portrait",
     "android": {
       "package": "com.ante.habitpot",
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -18,7 +22,14 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-web-browser"
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Ante to verify your live sidequest walk on the map."
+        }
+      ],
+      "expo-web-browser",
+      "expo-font"
     ]
   }
 }
