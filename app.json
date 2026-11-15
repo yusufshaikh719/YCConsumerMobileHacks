@@ -5,6 +5,10 @@
     "scheme": "stakes",
     "version": "1.0.0",
     "orientation": "portrait",
+    "android": {
+      "package": "com.stakes.habitpot",
+      "permissions": ["android.permission.CAMERA"]
+    },
     "plugins": [
       "expo-router",
       [

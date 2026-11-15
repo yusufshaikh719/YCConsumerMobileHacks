@@ -1,6 +1,6 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, BackHandler, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { WebView } from "react-native-webview";
@@ -40,6 +40,14 @@ export default function HomeScreen() {
     if (!dashboard) return;
     if (!dashboard.leaderboard.some(member => member.userId === userId)) setUserId(dashboard.leaderboard[0]?.userId ?? null);
   }, [dashboard, userId]);
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (selector) { setSelector(null); return true; }
+      if (tab !== "arena") { setTab("arena"); return true; }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [selector, tab]);
   const active = dashboard?.leaderboard.find(member => member.userId === userId);
   const choosePot = (id: Id<"pots">) => { tap(); setPotId(id); setSelector(null); setTab("arena"); };
 
@@ -52,14 +60,14 @@ export default function HomeScreen() {
         </View>
         <View style={styles.contextRow}>
           <Pressable onPress={() => { tap(); setSelector(selector === "player" ? null : "player"); }} style={styles.player}><View style={styles.avatar}><Text style={styles.avatarText}>{active?.user?.name?.[0] ?? "?"}</Text></View><Text style={styles.playerText}>{active?.user?.name ?? "Player"}  ⌄</Text></Pressable>
-          <View style={styles.wallet}><Text style={styles.walletText}>Whop Wallet · <Text style={styles.walletValue}>${((active?.user?.simulatedWalletBalanceCents ?? 0) / 100).toFixed(2)}</Text></Text></View>
+          <View style={styles.wallet}><Text style={styles.walletText}>Wallet (sim.) · <Text style={styles.walletValue}>${((active?.user?.simulatedWalletBalanceCents ?? 0) / 100).toFixed(2)}</Text></Text></View>
           <Pressable onPress={() => { tap(); setDemo(true); }} style={styles.demo}><Text style={styles.demoText}>STAGE DEMO</Text></Pressable>
         </View>
         {selector === "pot" && <View style={styles.dropdown}>{pots?.map(p => <Pressable key={p._id} style={styles.option} onPress={() => choosePot(p._id)}><Text style={styles.optionText}>{p.title}</Text></Pressable>)}<Pressable style={styles.option} onPress={() => { setSelector(null); setCreate(true); }}><Text style={styles.optionAccent}>+ New $10 Pot</Text></Pressable></View>}
         {selector === "player" && <View style={styles.dropdown}>{dashboard?.leaderboard.map(member => <Pressable key={member.userId} style={styles.option} onPress={() => { tap(); setUserId(member.userId); setSelector(null); }}><Text style={styles.optionText}>{member.user?.name ?? "Player"}{member.userId === userId ? "  ✓" : ""}</Text></Pressable>)}</View>}
       </View>
       {!potId || !dashboard || !userId ? <View style={styles.loading}><ActivityIndicator color={lime} /><Text style={styles.muted}>{error || "Opening your arena..."}</Text>{error ? <Pressable onPress={() => void seed({}).then(r => { setPotId(r.potId); setError(""); }).catch(e => setError(String(e)))}><Text style={styles.optionAccent}>Seed stage demo</Text></Pressable> : null}</View> : <>
-        <View style={styles.content}>{tab === "arena" ? <PotArena potId={potId} userId={userId} onCamera={() => setTab("camera")} onCreate={() => setCreate(true)} onDemo={() => setDemo(true)} /> : tab === "camera" ? <LiveCamera key={`${potId}:${userId}`} potId={potId} userId={userId} dayIndex={dashboard.pot.currentDayIndex} habitPrompt={dashboard.pot.habitPrompt} allowSimulatedDemo={dashboard.pot.whopProductId === "demo_whop_product_gym_pact"} onClose={() => setTab("arena")} /> : <WhopChat potId={potId} />}</View>
+        <View style={styles.content}>{tab === "arena" ? <PotArena potId={potId} userId={userId} onCamera={() => setTab("camera")} onCreate={() => setCreate(true)} onDemo={() => setDemo(true)} /> : tab === "camera" ? <LiveCamera key={`${potId}:${userId}`} potId={potId} userId={userId} allowSimulatedDemo={dashboard.pot.whopProductId === "demo_whop_product_gym_pact"} onClose={() => setTab("arena")} /> : <WhopChat potId={potId} />}</View>
         <View style={styles.tabs}>{([['arena', '◉', 'Arena'], ['camera', '◎', 'Prove'], ['chat', '▤', 'Chat']] as const).map(([id, icon, label]) => <Pressable key={id} style={styles.tab} onPress={() => { tap(); setTab(id); }}><Text style={[styles.tabIcon, tab === id && styles.selected]}>{icon}</Text><Text style={[styles.tabLabel, tab === id && styles.selected]}>{label}</Text></Pressable>)}</View>
         <DemoDrawer potId={potId} visible={demo} onClose={() => setDemo(false)} onReset={id => { setPotId(id); setTab("arena"); }} />
         <CreatePotSheet visible={create} onClose={() => setCreate(false)} userId={userId} onCreated={id => { setPotId(id); setTab("arena"); }} />
