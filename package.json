@@ -9,9 +9,11 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && jest",
     "convex:dev": "convex dev",
-    "convex:codegen": "convex codegen"
+    "convex:codegen": "convex codegen",
+    "test:unit": "vitest run",
+    "test:render": "jest"
   },
   "dependencies": {
     "@expo-google-fonts/bebas-neue": "^0.4.1",
@@ -42,10 +44,23 @@
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
+    "@testing-library/react-native": "^14.1.0",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "convex-test": "^0.0.71",
+    "jest": "^30.5.2",
+    "jest-expo": "~58.0.14",
+    "test-renderer": "^1.3.1",
     "typescript": "~6.0.3",
     "vitest": "^5.1.0"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "testMatch": [
+      "<rootDir>/src/**/*.test.tsx"
+    ],
+    "setupFiles": [
+      "<rootDir>/src/__render__/setup.ts"
+    ]
   }
 }
