@@ -3,12 +3,14 @@ import { StyleSheet, View } from "react-native";
 import { Paper } from "../src/components/Paper";
 import { Ping } from "../src/screens/Ping";
 import { QuestLive } from "../src/screens/QuestLive";
+import { Waiting } from "../src/screens/Waiting";
 import { useAnte } from "../src/state/AnteProvider";
 import { Text } from "../src/theme/Text";
 import { colors } from "../src/theme/tokens";
 
 export default function Home() {
   const { phase } = useAnte();
+  if (phase.name === "waiting") return <Waiting preview={phase.preview} />;
   if (phase.name === "ping") return <Ping key={phase.quest.id} quest={phase.quest} />;
   if (phase.name === "live") return <QuestLive key={phase.quest.id} quest={phase.quest} />;
   return (
