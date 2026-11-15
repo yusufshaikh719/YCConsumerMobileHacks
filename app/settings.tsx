@@ -52,6 +52,7 @@ export default function Settings() {
             <Text variant="label" color={colors.muted}>Group</Text>
             <Text variant="bodyStrong">{data.group.name}</Text>
             <Text variant="small" color={colors.muted}>Invite code {data.group.inviteCode}</Text>
+            <Text variant="small" color={colors.muted}>{data.backend === "convex" ? "Synced across phones. Demo identity: your name and this phone, no account." : "Offline mode: this phone only."}</Text>
           </View>
           <Text variant="bodyStrong" color={colors.leaf}>Change ›</Text>
         </Pressable>
