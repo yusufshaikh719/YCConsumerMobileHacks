@@ -6,8 +6,8 @@ export interface Storage {
   keepPhoto(uri: string, id: string): Promise<string>;
 }
 
-export function deviceStorage(): Storage {
-  const state = () => new File(Paths.document, "ante-state.json");
+export function deviceStorage(fileName = "ante-state.json"): Storage {
+  const state = () => new File(Paths.document, fileName);
   return {
     async read() {
       const file = state();

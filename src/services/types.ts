@@ -50,8 +50,19 @@ export type Verification =
   | { ok: true; postcard: Postcard; before: Standing[]; after: Standing[] }
   | { ok: false; reason: "not_verified" };
 
+export type Funding = {
+  payments: "sandbox" | "production" | "unavailable";
+  myStake: "paid" | "unpaid" | null;
+  paidCount: number;
+  lastPayout: { winners: string[]; amountCents: number; transfer: "whop" | "pending" | "fallback"; at: number } | null;
+};
+
+export type BuyIn = { url: string | null; mode: "live" | "fallback" };
+
 export type AnteSnapshot = {
   meId: string;
+  backend: "convex" | "local";
+  funding: Funding;
   loaded: boolean;
   onboarded: boolean;
   group: { name: string; inviteCode: string; members: Member[]; joined: boolean };
@@ -83,4 +94,5 @@ export interface AnteService {
   startSidequest(pingAt: number, origin: LatLng): Promise<Sidequest>;
   verifyArrival(quest: Sidequest, photoUri: string | null, position: Fix): Promise<Verification>;
   react(postcardId: string, reaction: Reaction): Promise<void>;
+  buyIn(): Promise<BuyIn>;
 }
