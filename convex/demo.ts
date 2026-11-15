@@ -84,7 +84,7 @@ export const fastForwardDailyDeadline = mutation({
   args: { potId: v.id("pots") },
   handler: async (ctx, { potId }): Promise<boolean> => {
     const pot = await ctx.db.get(potId);
-    if (!pot || pot.whopProductId !== "demo_whop_product_gym_pact" || pot.status !== "active") throw new Error("Demo pot is not active");
+    if (!pot || !["demo_whop_product_gym_pact", "demo_whop_product_sidequest"].includes(pot.whopProductId ?? "") || pot.status !== "active") throw new Error("Demo pot is not active");
     await ctx.db.patch(potId, { nextDeadlineAt: Date.now() - 1 });
     return await ctx.runMutation(internal.settlement.processDailyCutoff, { potId, triggeredBy: "demo" });
   },
@@ -94,7 +94,10 @@ export const simulateSundaySettlement = mutation({
   args: { potId: v.id("pots") },
   handler: async (ctx, { potId }): Promise<Id<"settlementEvents"> | null> => {
     const pot = await ctx.db.get(potId);
-    if (!pot || pot.whopProductId !== "demo_whop_product_gym_pact") throw new Error("Demo pot not found");
+    if (!pot || !["demo_whop_product_gym_pact", "demo_whop_product_sidequest"].includes(pot.whopProductId ?? "")) throw new Error("Demo pot not found");
+    if (pot.whopProductId === "demo_whop_product_sidequest" && pot.status === "active") {
+      await ctx.runMutation(internal.settlement.processDailyCutoff, { potId, triggeredBy: "demo" });
+    }
     return await ctx.runMutation(internal.settlement.settlePot, { potId, triggeredBy: "demo" });
   },
 });
@@ -129,19 +132,34 @@ export const seedSidequestDemoPot = mutation({
   args: {},
   handler: async (ctx): Promise<{ potId: Id<"pots">; userId: Id<"users"> }> => {
     const now = Date.now();
-    const handle = "stage_demo_walker";
-    const existingUser = await ctx.db.query("users").withIndex("by_handle", q => q.eq("handle", handle)).unique();
-    const userId = existingUser?._id ?? await ctx.db.insert("users", {
-      name: "Alex", handle, whopUserId: "demo_whop_user_walker", whopWalletId: "demo_whop_wallet_walker",
-      simulatedWalletBalanceCents: 0, createdAt: now,
-    });
+    const players = [
+      { name: "Aahil", handle: "stage_demo_walker", completedDays: [] as number[], missedDays: [] as number[] },
+      { name: "Yusuf", handle: "sidequest_demo_yusuf", completedDays: [1], missedDays: [] as number[] },
+      { name: "Ibrahim", handle: "sidequest_demo_ibrahim", completedDays: [1], missedDays: [] as number[] },
+      { name: "Leo", handle: "sidequest_demo_leo", completedDays: [] as number[], missedDays: [1] },
+    ];
+    const users = await Promise.all(players.map(async player => {
+      const existing = await ctx.db.query("users").withIndex("by_handle", q => q.eq("handle", player.handle)).unique();
+      const fields = { name: player.name, handle: player.handle, whopUserId: `demo_whop_user_${player.handle}`, whopWalletId: `demo_whop_wallet_${player.handle}`, simulatedWalletBalanceCents: 0 };
+      if (existing) { await ctx.db.patch(existing._id, fields); return existing._id; }
+      return await ctx.db.insert("users", { ...fields, createdAt: now });
+    }));
+    const userId = users[0];
     const existingPot = (await ctx.db.query("pots").collect()).find(pot => pot.whopProductId === "demo_whop_product_sidequest" && pot.createdByUserId === userId);
+    let inviteCode = existingPot?.inviteCode;
+    if (!inviteCode) {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const candidate = Math.floor(Math.random() * 36 ** 6).toString(36).toUpperCase().padStart(6, "0");
+        if (!await ctx.db.query("pots").withIndex("by_invite_code", q => q.eq("inviteCode", candidate)).first()) { inviteCode = candidate; break; }
+      }
+      if (!inviteCode) throw new Error("Could not generate demo invite code");
+    }
     const fields = {
-      title: "Neighborhood Sidequest", habitCategory: "fitness" as const, habitPrompt: "Walk to a nearby landmark.",
+      title: "Sidequest League", habitCategory: "fitness" as const, habitPrompt: "Walk to a nearby landmark.", inviteCode,
       challengeMode: "sidequest" as const, stakeCents: 1000, status: "active" as const,
       whopProductId: "demo_whop_product_sidequest", whopChatChannelId: "demo_whop_chat_sidequest",
       roastPersona: "drill_sergeant" as const, currentDayIndex: 1, dailyCutoffHourUtc: 7,
-      nextDeadlineAt: Math.max(nextCutoff(now, 7), now + 90 * 60_000), potTotalCents: 1000, forfeitedCents: 0, createdByUserId: userId, createdAt: now,
+      nextDeadlineAt: Math.max(nextCutoff(now, 7), now + 90 * 60_000), potTotalCents: 4000, forfeitedCents: 1000, createdByUserId: userId, createdAt: now,
     };
     const potId = existingPot?._id ?? await ctx.db.insert("pots", fields);
     if (existingPot) {
@@ -149,15 +167,25 @@ export const seedSidequestDemoPot = mutation({
       const memberships = await ctx.db.query("memberships").withIndex("by_pot", q => q.eq("potId", potId)).collect();
       const challenges = await ctx.db.query("challenges").withIndex("by_pot_user_day", q => q.eq("potId", potId)).collect();
       const submissions = await ctx.db.query("submissions").withIndex("by_pot_day", q => q.eq("potId", potId)).collect();
+      const availability = await ctx.db.query("availabilityWindows").withIndex("by_pot_user", q => q.eq("potId", potId)).collect();
+      const settlements = await ctx.db.query("settlementEvents").withIndex("by_pot", q => q.eq("potId", potId)).collect();
       const quests = await ctx.db.query("sidequests").withIndex("by_pot_user_day", q => q.eq("potId", potId)).collect();
       const walks = (await Promise.all(quests.map(quest => ctx.db.query("walkSubmissions").withIndex("by_sidequest", q => q.eq("sidequestId", quest._id)).collect()))).flat();
       for (const walk of walks) await ctx.storage.delete(walk.arrivalStorageId);
-      for (const document of [...memberships, ...challenges, ...submissions, ...walks, ...quests]) await ctx.db.delete(document._id);
+      for (const document of [...memberships, ...challenges, ...submissions, ...availability, ...settlements, ...walks, ...quests]) await ctx.db.delete(document._id);
     }
-    await ctx.db.insert("memberships", {
-      potId, userId, stakeStatus: "funded", whopCheckoutId: `demo_checkout_${potId}`,
-      whopPaymentId: `demo_payment_${potId}`, streakCount: 0, completedDays: [], missedDays: [], joinedAt: now,
-    });
+    for (const [i, player] of players.entries()) {
+      const playerId = users[i];
+      await ctx.db.insert("memberships", {
+        potId, userId: playerId, stakeStatus: i === 3 ? "forfeited" : "funded", whopCheckoutId: `demo_checkout_${potId}_${i}`,
+        whopPaymentId: `demo_payment_${potId}_${i}`, streakCount: player.completedDays.length, completedDays: player.completedDays, missedDays: player.missedDays, joinedAt: now + i,
+      });
+      await ctx.db.insert("availabilityWindows", { potId, userId: playerId, timezone: "America/Los_Angeles", slots: [1, 2, 3, 4, 5].map(dayOfWeek => ({ dayOfWeek, startMinute: 1020, endMinute: 1140 })), updatedAt: now });
+      if (player.completedDays.length) {
+        const challengeId = await ctx.db.insert("challenges", { potId, userId: playerId, dayIndex: 1, habitCategory: "fitness", promptText: "Walk to a nearby landmark.", verificationCode: `DEMO-${i}`, issuedAt: now - 1_800_000, expiresAt: now, status: "consumed" });
+        await ctx.db.insert("submissions", { potId, userId: playerId, dayIndex: 1, challengeId, capturedAt: now - 60_000, uploadedAt: now - 60_000, gyroVariance: 0.2, screenGlareSuspected: false, verdict: "passed", trustScore: 92, spoofSignals: [], roastPersona: "drill_sergeant", roastMessage: `${player.name} reached the landmark. Demo receipt.`, evaluationMode: "demo_override" });
+      }
+    }
     return { potId, userId };
   },
 });

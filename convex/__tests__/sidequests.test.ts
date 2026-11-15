@@ -32,6 +32,27 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(now); vi.stubEnv("GEMINI
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("map and arrival photo referee", () => {
+  it("exposes the latest current-day quest and its reactive walk receipt", async () => {
+    const { t, potId, userId, otherUserId, sidequestId, args } = await setup();
+    expect(await t.query(api.sidequests.getActiveSidequestForUser, { potId, userId })).toMatchObject({ _id: sidequestId });
+    expect(await t.query(api.sidequests.getActiveSidequestForUser, { potId, userId: otherUserId })).toBeNull();
+    expect(await t.query(api.mapReferee.getWalkSubmissionForSidequest, { sidequestId })).toBeNull();
+    const walkId = await t.mutation(api.mapReferee.submitWalkTrace, args);
+    expect(await t.query(api.mapReferee.getWalkSubmissionForSidequest, { sidequestId })).toMatchObject({ _id: walkId, verdict: "pending" });
+    await evaluate(t, walkId);
+    expect(await t.query(api.mapReferee.getWalkSubmissionForSidequest, { sidequestId })).toMatchObject({ verdict: "passed" });
+    await t.run(async ctx => ctx.db.patch(potId, { currentDayIndex: 3 }));
+    expect(await t.query(api.sidequests.getActiveSidequestForUser, { potId, userId })).toBeNull();
+  });
+
+  it("exposes the next availability dispatch without importing server functions in the client", async () => {
+    const { t, potId, userId } = await setup();
+    expect(await t.query(api.sidequests.getNextAvailabilityDispatch, { potId, userId, now })).toBeNull();
+    await t.mutation(api.availability.setAvailabilityWindows, { potId, userId, timezone: "UTC", slots: [{ dayOfWeek: 1, startMinute: 420, endMinute: 540 }] });
+    const dispatch = await t.query(api.sidequests.getNextAvailabilityDispatch, { potId, userId, now });
+    expect(dispatch).toEqual({ warningAt: now + 55 * 60_000, startsAt: now + 60 * 60_000 });
+  });
+
   it("reserves a pending feed item, then credits and announces a genuine walk exactly once", async () => {
     const { t, sidequestId, memberId, args, arrivalStorageId } = await setup();
     const id = await t.mutation(api.mapReferee.submitWalkTrace, args);

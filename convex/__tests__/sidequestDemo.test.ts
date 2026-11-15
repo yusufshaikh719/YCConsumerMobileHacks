@@ -36,6 +36,28 @@ describe("sidequest demo controls", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("seeds a funded league, invite, windows and simulated receipts and resets settlement", async () => {
+    const t = convexTest(schema, modules);
+    const { potId, userId } = await t.mutation(api.demo.seedSidequestDemoPot, {});
+    const dashboard = await t.query(api.pots.getPotDashboard, { potId });
+    expect(dashboard?.pot).toMatchObject({ potTotalCents: 4000, forfeitedCents: 1000, inviteCode: expect.stringMatching(/^[A-Z0-9]{6}$/) });
+    expect(dashboard?.leaderboard).toHaveLength(4);
+    expect(dashboard?.leaderboard.filter(member => member.stakeStatus === "funded")).toHaveLength(3);
+    expect(dashboard?.leaderboard.filter(member => member.stakeStatus === "forfeited")).toHaveLength(1);
+    expect(dashboard?.recentSubmissions).toHaveLength(2);
+    expect((await t.query(api.availability.getUserAvailability, { potId, userId }))?.slots).toHaveLength(5);
+    const settlementId = await t.mutation(api.demo.simulateSundaySettlement, { potId });
+    expect(settlementId).toBeTruthy();
+    const settled = await t.query(api.pots.getPotDashboard, { potId });
+    expect(settled?.leaderboard.find(member => member.userId === userId)).toMatchObject({ stakeStatus: "forfeited", payoutCents: 0 });
+    expect(settled?.latestSettlement).toMatchObject({ forfeitedPoolCents: 2000, perWinnerPayoutCents: 2000 });
+    await t.mutation(api.demo.seedSidequestDemoPot, {});
+    const reset = await t.query(api.pots.getPotDashboard, { potId });
+    expect(reset?.pot).toMatchObject({ status: "active", inviteCode: dashboard?.pot.inviteCode, potTotalCents: 4000, forfeitedCents: 1000 });
+    expect(reset?.latestSettlement).toBeNull();
+    expect(reset?.leaderboard.every(member => member.user?.simulatedWalletBalanceCents === 0)).toBe(true);
+  });
+
   it.each([
     ["valid_walk", "passed", "completed", undefined],
     ["uber_spoof", "failed_spoof", "failed_spoof", "vehicle_speed_detected"],
