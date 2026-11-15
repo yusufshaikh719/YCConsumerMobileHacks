@@ -6,6 +6,7 @@ import Home from "../../app/index";
 import { enableNotifications, notificationsGranted } from "../lib/notifications";
 import { getCurrentFix } from "../lib/position";
 import { ante } from "../services";
+import { YC_HQ } from "../dev/devQuest";
 import { useAnte, type DevTarget } from "../state/AnteProvider";
 import { currentAnte, LANDMARK, ORIGIN, renderApp, stampedToday, type Seed } from "./harness";
 
@@ -95,12 +96,12 @@ describe("home renders the current state", () => {
     expect(getCurrentFix).toHaveBeenCalled();
   });
 
-  it("QUEST LIVE shows distance, landmark card, a Map toggle, and no camera button", async () => {
+  it("QUEST LIVE from the dev switcher heads to Y Combinator, with distance, landmark card, a Map toggle, and no camera button", async () => {
     await renderAt("live");
-    expect(screen.getByText(LANDMARK.name)).toBeTruthy();
-    expect(screen.getByLabelText("800 meters to go")).toBeTruthy();
-    expect(screen.getByText(/About 14 min on foot/)).toBeTruthy();
-    expect(screen.getByText(LANDMARK.trivia)).toBeTruthy();
+    expect(screen.getByText("Y Combinator")).toBeTruthy();
+    expect(screen.getByLabelText("740 meters to go")).toBeTruthy();
+    expect(screen.getByText(/About 13 min on foot/)).toBeTruthy();
+    expect(screen.getByText(YC_HQ.trivia)).toBeTruthy();
     expect(screen.queryByLabelText("Take selfie")).toBeNull();
     await fireEvent.press(screen.getByLabelText("Show map"));
     expect(screen.getByTestId("quest-map")).toBeTruthy();
@@ -112,13 +113,25 @@ describe("home renders the current state", () => {
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2000);
     });
-    expect(screen.getByText(`Get ${LANDMARK.name} behind you.`)).toBeTruthy();
+    expect(screen.getByText("Get Y Combinator behind you.")).toBeTruthy();
     expect(screen.getByLabelText("Take selfie")).toBeTruthy();
   });
 
+  it("VERIFIED from the dev switcher stamps Y Combinator at its entrance", async () => {
+    jest.mocked(getCurrentFix).mockClear();
+    await renderAt("verified");
+    expect(screen.getByText("Stamp collected")).toBeTruthy();
+    expect(screen.getByText("Y Combinator")).toBeTruthy();
+    expect(ante.getSnapshot().postcards[0].landmark).toMatchObject({ name: "Y Combinator", coords: { lat: 37.76071, lng: -122.38602 } });
+    expect(getCurrentFix).not.toHaveBeenCalled();
+  });
+
   it("VERIFYING at the landmark stamps a postcard and nudges a solo player to invite", async () => {
-    jest.mocked(getCurrentFix).mockResolvedValueOnce({ fix: { ...ORIGIN, accuracy: 8 } }).mockResolvedValueOnce({ fix: { ...LANDMARK.coords, accuracy: 8 } });
+    jest.mocked(getCurrentFix).mockResolvedValueOnce({ fix: { ...YC_HQ.coords, accuracy: 8 } });
     await renderAt("verifying");
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3000);
+    });
     expect(screen.getByText("Stamp collected")).toBeTruthy();
     expect(screen.getByText("Make it a race")).toBeTruthy();
     expect(screen.queryByText(/You passed/)).toBeNull();

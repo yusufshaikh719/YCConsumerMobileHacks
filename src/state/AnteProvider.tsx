@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Linking, Platform } from "react-native";
+import { devQuest } from "../dev/devQuest";
 import { devToolsEnabled } from "../dev/enabled";
 import { arrivedAt } from "../lib/geofence";
 import { cancelPing, enableNotifications, notificationsGranted, onPingNotification, schedulePing } from "../lib/notifications";
@@ -162,12 +163,7 @@ export function AnteProvider({ children }: { children: ReactNode }) {
       return;
     }
     const elapsed = target === "live" ? PING_LEAD_MS + 20_000 : PING_LEAD_MS + 11 * 60_000;
-    const found = await findQuest(at - elapsed);
-    if (!("quest" in found)) {
-      dispatch({ type: "DEV_JUMP", phase: { name: "failed", quest: null, reason: found.reason } });
-      return;
-    }
-    const { quest } = found;
+    const quest = devQuest(at - elapsed);
     if (target === "live" || target === "arrived") dispatch({ type: "DEV_JUMP", phase: { name: target, quest } });
     else if (target === "verifying") dispatch({ type: "DEV_JUMP", phase: { name: "verifying", quest, photoUri: null } });
     else if (target === "failed") dispatch({ type: "DEV_JUMP", phase: { name: "failed", quest: { ...quest, expiresAt: at }, reason: "timeout" } });
