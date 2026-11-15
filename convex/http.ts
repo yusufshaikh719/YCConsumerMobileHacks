@@ -1,8 +1,44 @@
 import { httpRouter } from "convex/server";
+import { unwrapWebhook } from "@whop/sdk/helpers";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 
 const http = httpRouter();
+
+http.route({
+  path: "/whop",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const key = process.env.WHOP_WEBHOOK_SECRET;
+    if (!key) return json({ error: "Webhook secret is not configured" }, 503);
+    let event: Record<string, unknown>;
+    try {
+      event = unwrapWebhook<Record<string, unknown>>(await request.text(), {
+        headers: Object.fromEntries(request.headers), key,
+      });
+    } catch {
+      return json({ error: "Invalid webhook" }, 401);
+    }
+    if (!object(event) || typeof event.type !== "string") return json({ error: "Invalid event" }, 400);
+    if (event.type !== "payment.succeeded") return json({ received: true, ignored: true });
+    const data = object(event.data);
+    const metadata = object(data?.metadata);
+    if (metadata?.purpose !== "premium") return json({ received: true, ignored: true });
+    const eventId = request.headers.get("webhook-id");
+    const total = usdCents(data?.total);
+    const tax = data?.tax_amount == null ? 0 : usdCents(data.tax_amount);
+    if (!nonemptyString(eventId) || !nonemptyString(data?.id) || !nonemptyString(data?.checkout_configuration_id) ||
+        !nonemptyString(metadata.userId) || !nonemptyString(metadata.purchaseId) ||
+        data.currency !== "usd" || total === null || tax === null || total - tax < 1000) {
+      return json({ error: "Invalid premium payment" }, 400);
+    }
+    const result = await ctx.runMutation(internal.premium.fulfillPurchase, {
+      userId: metadata.userId, purchaseId: metadata.purchaseId, whopCheckoutId: data.checkout_configuration_id, whopPaymentId: data.id, eventId,
+    });
+    if (result === "invalid") return json({ error: "Invalid premium purchase" }, 400);
+    return json({ received: true, premium: true, duplicate: result === "duplicate" });
+  }),
+});
 
 function json(body: object, status = 200): Response {
   return new Response(JSON.stringify(body), {
