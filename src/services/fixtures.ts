@@ -3,12 +3,12 @@ import type { Landmark, LatLng, Member, Postcard, Reaction } from "./types";
 export const ME_ID = "aahil";
 
 export const members: Member[] = [
-  { id: "aahil", name: "Aahil", initials: "AS", tint: "#2FA052" },
-  { id: "sarah", name: "Sarah", initials: "SK", tint: "#C9772E" },
-  { id: "yusuf", name: "Yusuf", initials: "YS", tint: "#3C6E9E" },
-  { id: "maya", name: "Maya", initials: "MP", tint: "#A4507A" },
-  { id: "leo", name: "Leo", initials: "LM", tint: "#8A6D2F" },
-  { id: "priya", name: "Priya", initials: "PN", tint: "#5B5F97" },
+  { id: "aahil", name: "Aahil", fullName: "Aahil Shaikh", initials: "AS", tint: "#2FA052" },
+  { id: "sarah", name: "Sarah", fullName: "Sarah Kim", initials: "SK", tint: "#C9772E" },
+  { id: "yusuf", name: "Yusuf", fullName: "Yusuf Shaikh", initials: "YS", tint: "#3C6E9E" },
+  { id: "maya", name: "Maya", fullName: "Maya Patel", initials: "MP", tint: "#A4507A" },
+  { id: "leo", name: "Leo", fullName: "Leo Martinez", initials: "LM", tint: "#8A6D2F" },
+  { id: "priya", name: "Priya", fullName: "Priya Nair", initials: "PN", tint: "#5B5F97" },
 ];
 
 export const group = { name: "Sidequest Society", inviteCode: "HILL42", members };

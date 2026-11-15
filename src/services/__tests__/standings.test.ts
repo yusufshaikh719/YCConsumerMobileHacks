@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { passedMembers, payoutPreview, rankStandings } from "../standings";
 import type { Member, Postcard } from "../types";
 
-const m = (id: string): Member => ({ id, name: id, initials: id.slice(0, 2), tint: "#000" });
+const m = (id: string): Member => ({ id, name: id, fullName: id, initials: id.slice(0, 2), tint: "#000" });
 const members = [m("aahil"), m("sarah"), m("yusuf")];
 const card = (memberId: string, minutesTaken: number) => ({ id: `${memberId}-${Math.random()}`, memberId, minutesTaken }) as Postcard;
 

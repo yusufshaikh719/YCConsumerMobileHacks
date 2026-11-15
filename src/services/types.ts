@@ -2,7 +2,7 @@ import type { ImageSourcePropType } from "react-native";
 
 export type LatLng = { lat: number; lng: number };
 
-export type Member = { id: string; name: string; initials: string; tint: string };
+export type Member = { id: string; name: string; fullName: string; initials: string; tint: string };
 
 export type Landmark = {
   id: string;
