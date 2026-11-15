@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Stakes",
+    "slug": "stakes-habit-pot",
+    "scheme": "stakes",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Stakes to access your camera to submit habit proof.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ]
+  }
+}
