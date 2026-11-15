@@ -1,13 +1,15 @@
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View } from "react-native";
 import { Paper } from "../src/components/Paper";
+import { QuestLive } from "../src/screens/QuestLive";
 import { useAnte } from "../src/state/AnteProvider";
 import { Text } from "../src/theme/Text";
 import { colors } from "../src/theme/tokens";
 
 export default function Home() {
   const { phase } = useAnte();
-  const dark = phase.name === "ping" || phase.name === "live";
+  if (phase.name === "live") return <QuestLive key={phase.quest.id} quest={phase.quest} />;
+  const dark = phase.name === "ping";
   return (
     <Paper tone={dark ? "moss" : "paper"}>
       <StatusBar style={dark ? "light" : "dark"} />

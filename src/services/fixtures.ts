@@ -19,7 +19,7 @@ export const landmarks = {
   coit: {
     id: "coit-tower", name: "Coit Tower", neighborhood: "Telegraph Hill", coords: { lat: 37.8024, lng: -122.4058 },
     thumbnail: require("../../assets/landmarks/coit-tower.jpg"), source: "Wikipedia", radiusMeters: 45,
-    trivia: "Built in 1933 with Lillie Hitchcock Coit's bequest \"to add to the beauty of the city I have always loved.\"",
+    trivia: "Paid for by Lillie Hitchcock Coit's 1929 bequest \"to add to the beauty of the city I have always loved.\"",
   },
   paintedLadies: {
     id: "painted-ladies", name: "Painted Ladies", neighborhood: "Alamo Square", coords: { lat: 37.7764, lng: -122.4331 },
