@@ -9,6 +9,10 @@ export const processDailyCutoff = internalMutation({
   args: { potId: v.id("pots"), triggeredBy: trigger },
   handler: async (ctx, { potId, triggeredBy }) => {
     const pot = await ctx.db.get(potId);
+    if (pot?.challengeMode === "ante_weekly") {
+      await ctx.runMutation(internal.ante.settleWeek, { potId, triggeredBy });
+      return true;
+    }
     if (!pot || pot.status !== "active") return false;
     const members = await ctx.db.query("memberships").withIndex("by_pot", q => q.eq("potId", potId)).collect();
     let forfeitedCents = pot.forfeitedCents;
@@ -72,5 +76,7 @@ export const sweepExpiredDeadlines = internalMutation({
   handler: async ctx => {
     const pots = await ctx.db.query("pots").withIndex("by_status_deadline", q => q.eq("status", "active").lte("nextDeadlineAt", Date.now())).collect();
     for (const pot of pots) await ctx.runMutation(internal.settlement.processDailyCutoff, { potId: pot._id, triggeredBy: "cron" });
+    const idleWeeks = await ctx.db.query("pots").withIndex("by_status_deadline", q => q.eq("status", "open").lte("nextDeadlineAt", Date.now())).collect();
+    for (const pot of idleWeeks) if (pot.challengeMode === "ante_weekly") await ctx.runMutation(internal.ante.settleWeek, { potId: pot._id, triggeredBy: "cron" });
   },
 });
