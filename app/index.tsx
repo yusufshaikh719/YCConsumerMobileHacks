@@ -71,9 +71,9 @@ export default function HomeScreen() {
       {!potId || !dashboard || !userId || !premium ? <View style={styles.loading}><ActivityIndicator color={lime} /><Text style={styles.muted}>{error || "Opening your arena..."}</Text>{error ? <Pressable onPress={() => void seed({}).then(r => { setPotId(r.potId); setError(""); }).catch(e => setError(String(e)))}><Text style={styles.optionAccent}>Seed stage demo</Text></Pressable> : null}</View> : !premium.isPremium ? <PremiumPaywall key={userId} userId={userId} /> : <>
         <View style={styles.content}>{tab === "arena" ? <PotArena potId={potId} userId={userId} onCamera={() => setTab("camera")} onCreate={() => setCreate(true)} onDemo={() => setDemo(true)} /> : tab === "camera" ? <LiveCamera key={`${potId}:${userId}`} potId={potId} userId={userId} allowSimulatedDemo={dashboard.pot.whopProductId === "demo_whop_product_gym_pact"} onClose={() => setTab("arena")} /> : <WhopChat potId={potId} />}</View>
         <View style={styles.tabs}>{([['arena', '◉', 'Arena'], ['camera', '◎', 'Prove'], ['chat', '▤', 'Chat']] as const).map(([id, icon, label]) => <Pressable key={id} style={styles.tab} onPress={() => { tap(); setTab(id); }}><Text style={[styles.tabIcon, tab === id && styles.selected]}>{icon}</Text><Text style={[styles.tabLabel, tab === id && styles.selected]}>{label}</Text></Pressable>)}</View>
-        <DemoDrawer potId={potId} visible={demo} onClose={() => setDemo(false)} onReset={id => { setPotId(id); setTab("arena"); }} />
         <CreatePotSheet visible={create} onClose={() => setCreate(false)} userId={userId} onCreated={id => { setPotId(id); setTab("arena"); }} />
       </>}
+      {potId && <DemoDrawer potId={potId} visible={demo} onClose={() => setDemo(false)} onReset={id => { setPotId(id); setTab("arena"); }} />}
     </View>
   </SafeAreaView>;
 }
