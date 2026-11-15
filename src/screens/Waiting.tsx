@@ -15,7 +15,7 @@ import { Text } from "../theme/Text";
 import { colors, radius, space } from "../theme/tokens";
 
 export function Waiting({ preview }: { preview?: "open" | "closed" }) {
-  const { data } = useAnte();
+  const { data, notificationsOn, retryNotifications } = useAnte();
   const insets = useSafeAreaInsets();
   const now = useNow(30_000);
   const open = preview ? preview === "open" : isInWindow(data.window, now);
@@ -48,6 +48,13 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
             {open ? "Keep your phone close. You'll get one minute's warning." : opensToday ? "Your sidequest window opens later today." : "Your window is done for today. Rest up."}
           </Text>
         </View>
+
+        {notificationsOn === false && (
+          <Pressable accessibilityRole="button" onPress={() => void retryNotifications()} style={({ pressed }) => [styles.notice, pressed && styles.pressed]}>
+            <Text variant="bodyStrong">Turn on notifications</Text>
+            <Text variant="small" color={colors.inkSoft}>Ante gives you one minute's warning before a sidequest. Without notifications, you'll only see it with the app open.</Text>
+          </Pressable>
+        )}
 
         <View style={styles.sectionHead}>
           <Text variant="label" color={colors.muted}>Today's postcards</Text>
@@ -104,6 +111,7 @@ const styles = StyleSheet.create({
   hero: { alignItems: "center", paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xl, gap: space.xs },
   state: { marginTop: space.sm },
   sub: { maxWidth: 300 },
+  notice: { marginHorizontal: space.lg, marginBottom: space.lg, padding: space.md, gap: 4, borderRadius: radius.md, backgroundColor: colors.leafSoft, borderWidth: 1, borderColor: colors.leaf },
   sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", paddingHorizontal: space.lg, marginBottom: space.sm },
   stack: { paddingHorizontal: space.lg, paddingVertical: space.sm, paddingRight: space.xl },
   empty: { marginHorizontal: space.lg, padding: space.lg, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed", borderColor: colors.rule },

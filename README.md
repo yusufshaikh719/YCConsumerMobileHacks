@@ -17,8 +17,10 @@ In development builds a small "DEV" tab on the right edge opens the state switch
 
 ```sh
 npm run typecheck
-npm test
+npm test            # vitest (backend, state machine, geofence, fixture service, full flow) + jest render tests
 ```
+
+`npm run test:unit` and `npm run test:render` run each half on its own. Render tests live in `src/__render__` and mount every home state and secondary screen through the real provider with native modules mocked.
 
 ## Backend (Convex + Whop)
 

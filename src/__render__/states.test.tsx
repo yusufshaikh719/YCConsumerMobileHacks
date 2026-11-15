@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { useEffect } from "react";
 import Home from "../../app/index";
+import { enableNotifications } from "../lib/notifications";
 import { useAnte, type DevTarget } from "../state/AnteProvider";
 import { renderApp } from "./harness";
 
@@ -111,5 +112,16 @@ describe("home renders the current state", () => {
       await jest.advanceTimersByTimeAsync(2000);
     });
     expect(screen.getByLabelText("Take selfie")).toBeTruthy();
+  });
+});
+
+describe("notification permission", () => {
+  it("WAITING explains why notifications matter when they are off", async () => {
+    jest.mocked(enableNotifications).mockResolvedValueOnce(false);
+    await renderAt("waiting-open");
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(screen.getByText("Turn on notifications")).toBeTruthy();
   });
 });

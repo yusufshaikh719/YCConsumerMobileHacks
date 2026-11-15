@@ -1,6 +1,6 @@
 import { router } from "expo-router";
-import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useSyncExternalStore, type ReactNode } from "react";
-import { AppState, Platform } from "react-native";
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { AppState, Linking, Platform } from "react-native";
 import { devToolsEnabled } from "../dev/enabled";
 import { insideGeofence } from "../lib/geofence";
 import { cancelPing, enableNotifications, onPingNotification, schedulePing } from "../lib/notifications";
@@ -18,6 +18,8 @@ type Ante = {
   position: LatLng | null;
   heading: number | null;
   locationDenied: boolean;
+  notificationsOn: boolean | null;
+  retryNotifications: () => Promise<void>;
   dispatch: (event: Event) => void;
   jump: (target: DevTarget) => Promise<void>;
 };
@@ -33,6 +35,7 @@ export function AnteProvider({ children }: { children: ReactNode }) {
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const scheduledFor = useRef<number | null>(null);
+  const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
 
   const questActive = QUEST_PHASES.includes(phase.name);
   const tracking = questActive && ante.positionMode === "device";
@@ -60,7 +63,12 @@ export function AnteProvider({ children }: { children: ReactNode }) {
     }
     if (scheduledFor.current !== pingAt) {
       scheduledFor.current = pingAt;
-      void enableNotifications().then(ok => (ok ? schedulePing(pingAt) : undefined)).catch(() => undefined);
+      void enableNotifications()
+        .then(ok => {
+          setNotificationsOn(ok);
+          return ok ? schedulePing(pingAt) : undefined;
+        })
+        .catch(() => undefined);
     }
     const fire = () => {
       if (Date.now() >= pingAt) void firePing(pingAt);
@@ -141,8 +149,15 @@ export function AnteProvider({ children }: { children: ReactNode }) {
     if (target) void jump(target as DevTarget);
   }, [jump]);
 
+  const retryNotifications = useCallback(async () => {
+    const ok = await enableNotifications();
+    setNotificationsOn(ok);
+    if (!ok) await Linking.openSettings().catch(() => undefined);
+    else if (data.nextPingAt) await schedulePing(data.nextPingAt);
+  }, [data.nextPingAt]);
+
   return (
-    <AnteContext.Provider value={{ phase, data, position, heading, locationDenied: device.denied, dispatch, jump }}>
+    <AnteContext.Provider value={{ phase, data, position, heading, locationDenied: device.denied, notificationsOn, retryNotifications, dispatch, jump }}>
       {children}
     </AnteContext.Provider>
   );
