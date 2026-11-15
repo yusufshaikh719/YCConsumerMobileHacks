@@ -10,7 +10,7 @@ import { completionMinutes, initials, ME_ID, STAKE_CENTS, weekBounds } from "./l
 import { rankStandings } from "./standings";
 import { buildCheckoutUrl } from "./whop";
 import type { Storage } from "./storage";
-import { NoLandmarkError, REACTIONS, type AnteService, type AnteSnapshot, type FreeWindow, type Funding, type Landmark, type LatLng, type Member, type Postcard, type Reaction } from "./types";
+import { NoLandmarkError, REACTIONS, type AnteService, type AnteSnapshot, type FreeWindow, type Funding, type Landmark, type LatLng, type Member, type Postcard, type Reaction, type Sidequest } from "./types";
 
 export type Backend = Pick<ConvexReactClient, "query" | "mutation" | "action" | "watchQuery">;
 type Group = NonNullable<FunctionReturnType<typeof api.ante.getGroup>>;
@@ -169,6 +169,24 @@ export function createConvexService({
       .catch(() => undefined);
   };
 
+  const register = async ({ landmark, origin, pingAt, revealAt, expiresAt }: Sidequest) => {
+    const thumbnail = landmark.thumbnail && typeof landmark.thumbnail === "object" && "uri" in landmark.thumbnail ? landmark.thumbnail.uri : undefined;
+    return await client.mutation(api.ante.startQuest, {
+      deviceId: saved.deviceId,
+      potId: saved.potId as Id<"pots">,
+      landmark: {
+        id: landmark.id, name: landmark.name, neighborhood: landmark.neighborhood, lat: landmark.coords.lat, lng: landmark.coords.lng,
+        trivia: landmark.trivia, source: landmark.source, radiusMeters: landmark.radiusMeters,
+        ...(thumbnail ? { thumbnailUrl: thumbnail } : {}), ...(landmark.url ? { url: landmark.url } : {}),
+      },
+      originLat: origin.lat,
+      originLng: origin.lng,
+      pingAt,
+      revealAt,
+      expiresAt,
+    });
+  };
+
   const enterGroup = async (potId: string) => {
     saved = { ...saved, potId };
     watch();
@@ -247,22 +265,8 @@ export function createConvexService({
       const walkMinutes = walkMinutesFor(distance);
       const revealAt = pingAt + PING_LEAD_MS;
       const expiresAt = revealAt + completionMinutes(walkMinutes) * 60_000;
-      const thumbnail = landmark.thumbnail && typeof landmark.thumbnail === "object" && "uri" in landmark.thumbnail ? landmark.thumbnail.uri : undefined;
-      const id = await client.mutation(api.ante.startQuest, {
-        deviceId: saved.deviceId,
-        potId: saved.potId as Id<"pots">,
-        landmark: {
-          id: landmark.id, name: landmark.name, neighborhood: landmark.neighborhood, lat: landmark.coords.lat, lng: landmark.coords.lng,
-          trivia: landmark.trivia, source: landmark.source, radiusMeters: landmark.radiusMeters,
-          ...(thumbnail ? { thumbnailUrl: thumbnail } : {}), ...(landmark.url ? { url: landmark.url } : {}),
-        },
-        originLat: origin.lat,
-        originLng: origin.lng,
-        pingAt,
-        revealAt,
-        expiresAt,
-      });
-      return { id, landmark, origin, pingAt, revealAt, expiresAt, distanceMeters: distance, walkMinutes };
+      const quest = { id: "", landmark, origin, pingAt, revealAt, expiresAt, distanceMeters: distance, walkMinutes };
+      return { ...quest, id: await register(quest) };
     },
     async verifyArrival(quest, photoUri, position) {
       const before = snapshot.standings;
@@ -275,9 +279,10 @@ export function createConvexService({
         }
       }
       try {
+        const sidequestId = quest.id.startsWith("sq-") ? await register(quest) : quest.id;
         const result = await client.action(api.ante.submitArrival, {
           deviceId: saved.deviceId,
-          sidequestId: quest.id as Id<"sidequests">,
+          sidequestId: sidequestId as Id<"sidequests">,
           lat: position.lat,
           lng: position.lng,
           ...(position.accuracy != null ? { accuracy: position.accuracy } : {}),

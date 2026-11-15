@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import schema from "../../../convex/schema";
+import { devQuest } from "../../dev/devQuest";
 import { PING_LEAD_MS } from "../../lib/time";
 import { availabilitySlots, createConvexService, type Backend } from "../convexService";
 import { memoryStorage } from "../memoryStorage";
@@ -152,6 +153,16 @@ describe("convex service shared standings", () => {
     const card = a.service.getSnapshot().postcards[0];
     await a.service.react(card.id, "🔥");
     expect(b.service.getSnapshot().postcards.find(p => p.id === card.id)!.reactions["🔥"]).toEqual([a.service.getSnapshot().meId]);
+  });
+
+  it("registers a dev-switcher quest on the server before verifying it", async () => {
+    const t = convexTest(schema, modules);
+    const { backend } = connect(t);
+    const a = await phone(t, backend, "Aahil");
+    await a.service.createGroup("");
+    const quest = devQuest(Date.now() - PING_LEAD_MS - 11 * 60_000);
+    const result = await a.service.verifyArrival(quest, null, quest.landmark.coords);
+    expect(result).toMatchObject({ ok: true, postcard: { landmark: { name: "Y Combinator" } } });
   });
 
   it("is not verified away from the landmark, and records nothing", async () => {
