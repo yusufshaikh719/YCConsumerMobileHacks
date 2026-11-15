@@ -13,7 +13,7 @@ const log = (step, value) => console.log(JSON.stringify({ step, ...value }));
 const summary = group => group && {
   title: group.title, inviteCode: group.inviteCode, potCents: group.potCents, status: group.status, payments: group.payments,
   members: group.members.map(m => `${m.name}:${m.stakeStatus}`),
-  stamps: group.stamps.map(s => ({ by: group.members.find(m => m.userId === s.userId)?.name, landmark: s.landmark.name, minutes: s.minutesTaken, photo: Boolean(s.photoUrl) })),
+  stamps: group.stamps.map(s => ({ by: group.members.find(m => m.userId === s.userId)?.name, landmark: s.landmark.name, minutes: s.minutesTaken, photo: Boolean(s.photoUrl), verifiedBy: s.verifiedBy })),
   lastSettlement: group.lastSettlement,
 };
 
@@ -41,15 +41,20 @@ log("created", { potId, inviteCode, userA, userB });
 log("joined", await client.mutation(api.ante.joinGroup, { deviceId: b, inviteCode }));
 
 const origin = { lat: 37.7694, lng: -122.4862 };
-const landmark = { id: "wiki-live", name: "Spreckels Temple of Music", neighborhood: "Golden Gate Park", lat: 37.7704, lng: -122.4687, trivia: "Bandshell built in 1900.", source: "Wikipedia", radiusMeters: 50 };
+const landmark = { id: "wiki-69749966", name: "Spreckels Temple of Music", neighborhood: "Golden Gate Park", lat: 37.76972, lng: -122.46833, trivia: "An open-air bandshell in Golden Gate Park's Music Concourse, built in 1900.", source: "Wikipedia", radiusMeters: 50 };
+const landmarkPhoto = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Golden_Gate_Park_-_Spreckels_Temple_of_Music_02.jpg/960px-Golden_Gate_Park_-_Spreckels_Temple_of_Music_02.jpg";
+const store = async (bytes, type) => {
+  const target = await client.mutation(api.submissions.generateUploadUrl, {});
+  return (await (await fetch(target, { method: "POST", headers: { "Content-Type": type }, body: bytes })).json()).storageId;
+};
 const now = Date.now();
 const sidequestId = await client.mutation(api.ante.startQuest, { deviceId: a, potId, landmark, originLat: origin.lat, originLng: origin.lng, pingAt: now - 60_000, revealAt: now, expiresAt: now + 25 * 60_000 });
-const away = await client.mutation(api.ante.completeQuest, { deviceId: a, sidequestId, lat: origin.lat, lng: origin.lng, accuracy: 10 });
-log("completion from the start point", away);
-const uploadUrl = await client.mutation(api.submissions.generateUploadUrl, {});
-const jpeg = Uint8Array.from(atob("/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="), c => c.charCodeAt(0));
-const { storageId } = await (await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: jpeg })).json();
-log("completion at the landmark", await client.mutation(api.ante.completeQuest, { deviceId: a, sidequestId, lat: landmark.lat, lng: landmark.lng, accuracy: 10, photoStorageId: storageId }));
+const away = await client.action(api.ante.submitArrival, { deviceId: a, sidequestId, lat: origin.lat, lng: origin.lng, accuracy: 10 });
+log("arrival from the start point", away);
+const blank = Uint8Array.from(atob("/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="), c => c.charCodeAt(0));
+log("arrival at the landmark with a blank photo", await client.action(api.ante.submitArrival, { deviceId: a, sidequestId, lat: landmark.lat, lng: landmark.lng, accuracy: 10, photoStorageId: await store(blank, "image/jpeg") }));
+const photo = new Uint8Array(await (await fetch(landmarkPhoto, { headers: { "User-Agent": "AnteApp/1.0 (live pass)" } })).arrayBuffer());
+log("arrival at the landmark with a photo of it", await client.action(api.ante.submitArrival, { deviceId: a, sidequestId, lat: landmark.lat, lng: landmark.lng, accuracy: 10, photoStorageId: await store(photo, "image/jpeg") }));
 log("seen by phone B", summary(await client.query(api.ante.getGroup, { deviceId: b, potId })));
 
 const checkout = await client.action(api.whop.createPotCheckout, { potId, userId: userB });
