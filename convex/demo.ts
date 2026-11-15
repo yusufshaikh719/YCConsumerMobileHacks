@@ -1,8 +1,9 @@
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
 import { DAY_MS, nextCutoff } from "./lib/contracts";
+import { haversineMeters, walkingMinutes } from "./sidequests";
 
 export const seedStageDemoPot = mutation({
   args: {},
@@ -104,6 +105,8 @@ export const forceDemoSubmissionVerdict = mutation({
     const submission = await ctx.db.get(submissionId);
     const pot = submission && await ctx.db.get(submission.potId);
     if (!pot || pot.whopProductId !== "demo_whop_product_gym_pact" || pot.status !== "active" || pot.currentDayIndex !== submission?.dayIndex) throw new Error("Submission is not from the active demo day");
+    const walk = await ctx.db.query("walkSubmissions").withIndex("by_feed_submission", q => q.eq("feedSubmissionId", submissionId)).first();
+    if (walk) throw new Error("Sidequest submissions must be evaluated by the map referee");
     return await ctx.runMutation(internal.submissions.recordRefereeVerdict, {
       submissionId, verdict, trustScore: verdict === "passed" ? 96 : 12,
       spoofSignals: verdict === "passed" ? [] : ["screen_glare", "low_motion"],
@@ -119,5 +122,105 @@ export const simulateWhopPayment = mutation({
     const pot = await ctx.db.get(args.potId);
     if (!pot || pot.whopProductId !== "demo_whop_product_gym_pact") throw new Error("Demo pot not found");
     return await ctx.runMutation(internal.pots.confirmWhopStake, { ...args, mode: "simulated" });
+  },
+});
+
+export const seedSidequestDemoPot = mutation({
+  args: {},
+  handler: async (ctx): Promise<{ potId: Id<"pots">; userId: Id<"users"> }> => {
+    const now = Date.now();
+    const handle = "stage_demo_walker";
+    const existingUser = await ctx.db.query("users").withIndex("by_handle", q => q.eq("handle", handle)).unique();
+    const userId = existingUser?._id ?? await ctx.db.insert("users", {
+      name: "Alex", handle, whopUserId: "demo_whop_user_walker", whopWalletId: "demo_whop_wallet_walker",
+      simulatedWalletBalanceCents: 0, createdAt: now,
+    });
+    const existingPot = (await ctx.db.query("pots").collect()).find(pot => pot.whopProductId === "demo_whop_product_sidequest" && pot.createdByUserId === userId);
+    const fields = {
+      title: "Neighborhood Sidequest", habitCategory: "fitness" as const, habitPrompt: "Walk to a nearby landmark.",
+      challengeMode: "sidequest" as const, stakeCents: 1000, status: "active" as const,
+      whopProductId: "demo_whop_product_sidequest", whopChatChannelId: "demo_whop_chat_sidequest",
+      roastPersona: "drill_sergeant" as const, currentDayIndex: 1, dailyCutoffHourUtc: 7,
+      nextDeadlineAt: Math.max(nextCutoff(now, 7), now + 90 * 60_000), potTotalCents: 1000, forfeitedCents: 0, createdByUserId: userId, createdAt: now,
+    };
+    const potId = existingPot?._id ?? await ctx.db.insert("pots", fields);
+    if (existingPot) {
+      await ctx.db.patch(potId, fields);
+      const memberships = await ctx.db.query("memberships").withIndex("by_pot", q => q.eq("potId", potId)).collect();
+      const challenges = await ctx.db.query("challenges").withIndex("by_pot_user_day", q => q.eq("potId", potId)).collect();
+      const submissions = await ctx.db.query("submissions").withIndex("by_pot_day", q => q.eq("potId", potId)).collect();
+      const quests = await ctx.db.query("sidequests").withIndex("by_pot_user_day", q => q.eq("potId", potId)).collect();
+      const walks = (await Promise.all(quests.map(quest => ctx.db.query("walkSubmissions").withIndex("by_sidequest", q => q.eq("sidequestId", quest._id)).collect()))).flat();
+      for (const walk of walks) await ctx.storage.delete(walk.arrivalStorageId);
+      for (const document of [...memberships, ...challenges, ...submissions, ...walks, ...quests]) await ctx.db.delete(document._id);
+    }
+    await ctx.db.insert("memberships", {
+      potId, userId, stakeStatus: "funded", whopCheckoutId: `demo_checkout_${potId}`,
+      whopPaymentId: `demo_payment_${potId}`, streakCount: 0, completedDays: [], missedDays: [], joinedAt: now,
+    });
+    return { potId, userId };
+  },
+});
+
+export const demoTrigger5MinWarning = mutation({
+  args: { potId: v.id("pots"), userId: v.id("users"), lat: v.number(), lng: v.number() },
+  handler: async (ctx, { potId, userId, lat, lng }): Promise<Id<"sidequests">> => {
+    const pot = await ctx.db.get(potId);
+    if (!pot || !["demo_whop_product_gym_pact", "demo_whop_product_sidequest"].includes(pot.whopProductId ?? "") || pot.status !== "active") throw new Error("Demo pot is not active");
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error("Invalid coordinates");
+
+    const landmarks = [
+      { name: "Oracle Park", lat: 37.7786, lng: -122.3893, summary: "Look for the waterfront ballpark and its brick arches." },
+      { name: "Crane Cove Park", lat: 37.7584, lng: -122.3868, summary: "Look for the historic shipyard cranes on the waterfront." },
+      { name: "The Embarcadero", lat: 37.7937, lng: -122.3917, summary: "Look for the waterfront promenade and bay views." },
+    ];
+    const landmark = landmarks.find(point => {
+      const distance = haversineMeters(lat, lng, point.lat, point.lng);
+      return distance >= 450 && distance <= 1450;
+    }) ?? { name: "Neighborhood waypoint", lat: lat <= 89.99 ? lat + 850 / 111_195 : lat - 850 / 111_195, lng, summary: "Explore the area around this map waypoint." };
+    const distanceMeters = Math.round(haversineMeters(lat, lng, landmark.lat, landmark.lng));
+    return await ctx.runMutation(internal.sidequests.createWarning, {
+      potId, userId, lat, lng,
+      discovery: {
+        title: `Walk to ${landmark.name}`, instruction: `Walk to ${landmark.name}. ${landmark.summary}`,
+        destName: landmark.name, destLat: landmark.lat, destLng: landmark.lng, destSummary: landmark.summary,
+        destSource: "curated_fallback", distanceMeters, allottedMinutes: walkingMinutes(distanceMeters),
+        targetRadiusMeters: 65, mode: "fallback",
+      },
+    });
+  },
+});
+
+export const demoSimulateWalkTrace = mutation({
+  args: { sidequestId: v.id("sidequests"), mode: v.union(v.literal("valid_walk"), v.literal("uber_spoof"), v.literal("screen_photo_spoof"), v.literal("couch_timeout")) },
+  handler: async (ctx, { sidequestId, mode }): Promise<Id<"walkSubmissions">> => {
+    const quest = await ctx.db.get(sidequestId);
+    const pot = quest && await ctx.db.get(quest.potId);
+    if (!quest || !pot || !["demo_whop_product_gym_pact", "demo_whop_product_sidequest"].includes(pot.whopProductId ?? "") || pot.status !== "active") throw new Error("Demo pot is not active");
+    if (quest.status !== "warning_5m" && quest.status !== "active") throw new Error("Demo sidequest is not active");
+    if (await ctx.db.query("walkSubmissions").withIndex("by_sidequest", q => q.eq("sidequestId", sidequestId)).first()) throw new Error("Demo sidequest already submitted");
+    const now = Date.now();
+    const distance = haversineMeters(quest.originLat, quest.originLng, quest.destLat, quest.destLng);
+    const duration = mode === "couch_timeout" ? 60_000 : Math.max(8000, Math.ceil(distance / (mode === "uber_spoof" ? 14 : 1.4) * 1000));
+    const start = now - duration - 1000;
+    const startsAt = mode === "couch_timeout" ? start - quest.allottedMinutes * 60_000 : start;
+    const expiresAt = mode === "couch_timeout" ? now - 500 : Math.max(now + 60_000, startsAt + quest.allottedMinutes * 60_000);
+    await ctx.db.patch(sidequestId, { status: "active", startsAt, expiresAt });
+    const lngDelta = ((quest.destLng - quest.originLng + 540) % 360) - 180;
+    const points = Array.from({ length: 9 }, (_, i) => {
+      const progress = mode === "couch_timeout" ? 0 : i / 8;
+      return {
+        lat: quest.originLat + (quest.destLat - quest.originLat) * progress,
+        lng: ((quest.originLng + lngDelta * progress + 540) % 360) - 180,
+        timestamp: start + Math.round(duration * i / 8), accuracyM: 5,
+        speedMps: mode === "couch_timeout" ? 0 : mode === "uber_spoof" ? 14 : 1.4,
+      };
+    });
+    const bytes = Uint8Array.from(atob("/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCABAAGADASIAAhEBAxEB/8QAGgAAAgMBAQAAAAAAAAAAAAAAAAQBAwUCBv/EAC8QAAICAQIDBwMDBQAAAAAAAAECAAMRBBIhMVEFEyJBYXGRFBWBQlLRIzJiobH/xAAYAQADAQEAAAAAAAAAAAAAAAAAAQMEAv/EAB8RAAIDAAICAwAAAAAAAAAAAAABAgMREiEEMRNBQv/aAAwDAQACEQMRAD8A1YQhNRiCEIQAIQhAAhCEAJAJIAGSeQEuOj1ATd3Rx/v4jHZSKbHc81AA/M05kt8hwlxSNFdKlHWedhGu0kVNVlf1DcfeKzTCXKKZCS4vAhCQzBVLMcAToRJIAyeAhENRqDb4VyE/7J0+pKEK5ynL2kvmjuDwehIVgyhlOQZMqIIQhAC3T3tp7Q6jPkR1EePadezIrbd08vmZW9d+zcN3SdSU6oTes7jZKKxHdtjW2M78z0nEISqWdI49kM6oMsQB6zPvvNzdFHITm61rXyeXkOkrmSyzl0vR0kEIQkjotpueo8OK+Yj9dqWjKH3HSZc6R2rbcpwZWFjj19CaNRmCqWY4Aid2rLZWvgOvWUWWvacufYdJxHO1vpCSCMV6qxODeMevOLwklJr0M06rktHhPHoecsmSCQcjgYxVq3Xg/iHXzmiNy/Ry0YtWt1V1grqpFjnkqqST+JYLu0DaahpGNgG4p3bZA64lHZhA1ZDMq7qbVBZgoya2A4n1Mf0xqXQvpLrK3s7puC3qvA2VkKGOR+lj+ZLEVSFbNVrKlLWafYobYSyEANjOPedLd2g1rVLpGNigFlFbZAPLIjOmOm+hGkusRE797SptVsYFfmOByu8DqZHaNv3BAK7qu9zW9m6wKGzUg5k44ENw9YYgwTTW6qy0VJSGsJwECkknpid16jXW1myvSl61yCy1sQMc+MsOopTX6jVFy+yoICj7S7lQrMMg/wCRziMi/Rrdp3VgGbVPdXiwYqLLWRuGOIB4eXIwxBiE+97QCox0jbbCAh7tsNnljrmV/W6rcF7kZI3AbTxGM59ppaXU6VddUwcIwXSh3awbSB3eQB5EEDPE8jEqbEbs9X7xBeqtp1BYA4Y5z7YLjPtDEGIr+r1fh/of3KXXwHiozkj04Hj6Sv7ld+2v4P8AM01v02odlrcJ3K21IbLVAdTUyrjOMDKj8tMS2pqX2sUJxnwOGHyDDEJoY+5Xftr+D/MPuV37a/g/zE4QxAf/2Q=="), char => char.charCodeAt(0));
+    const arrivalStorageId = await ctx.storage.store(new Blob([bytes], { type: "image/jpeg" }));
+    return await ctx.runMutation(api.mapReferee.submitWalkTrace, {
+      sidequestId, userId: quest.userId, points, arrivalStorageId, arrivalCapturedAt: points[points.length - 1].timestamp,
+      gyroVariance: mode === "screen_photo_spoof" ? 0.001 : 0.2, screenGlareSuspected: mode === "screen_photo_spoof",
+    });
   },
 });
