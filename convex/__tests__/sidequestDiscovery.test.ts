@@ -38,11 +38,15 @@ describe("sidequest discovery and lifecycle", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("list=geosearch")) {
-        expect((init?.headers as Record<string, string>)["User-Agent"]).toBe("AnteHackathonApp/1.0");
+        expect((init?.headers as Record<string, string>)["User-Agent"]).toBe("AnteApp/1.0 (https://github.com/yusufshaikh719/YCConsumerMobileHacks)");
+        expect(new URL(url).searchParams.get("gslimit")).toBe("50");
         return json({ query: { geosearch: [{ title: "Too close", lat: origin.lat + 0.001, lon: origin.lng, pageid: 1 }, { title: "Interesting Park", lat: origin.lat + 0.007, lon: origin.lng, pageid: 2 }] } });
       }
       if (url.includes("prop=extracts")) return json({ query: { pages: { 2: { extract: "A historic park." } } } });
-      if (url.includes("overpass-api")) return json({ elements: [{ type: "way", id: 7, tags: { name: "Garden" }, center: { lat: origin.lat - 0.008, lon: origin.lng } }] });
+      if (url.includes("overpass-api")) {
+        expect(init?.headers).toMatchObject({ "Accept": "application/json", "User-Agent": "AnteApp/1.0 (https://github.com/yusufshaikh719/YCConsumerMobileHacks)" });
+        return json({ elements: [{ type: "way", id: 7, tags: { name: "Garden" }, center: { lat: origin.lat - 0.008, lon: origin.lng } }] });
+      }
       throw new Error("unexpected URL");
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -53,6 +57,22 @@ describe("sidequest discovery and lifecycle", () => {
     expect(result.distanceMeters).toBeLessThanOrEqual(1450);
     expect(result.allottedMinutes).toBe(walkingMinutes(result.distanceMeters));
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("finds a walkable landmark beyond dense nearby results", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("list=geosearch")) {
+        const limit = Number(new URL(url).searchParams.get("gslimit"));
+        const hits = Array.from({ length: 12 }, (_, i) => ({ pageid: i + 1, title: `Nearby ${i}`, lat: origin.lat + 0.001, lon: origin.lng }));
+        hits.push({ pageid: 13, title: "Walkable landmark", lat: origin.lat + 0.008, lon: origin.lng });
+        return json({ query: { geosearch: hits.slice(0, limit) } });
+      }
+      if (url.includes("prop=extracts")) return json({ query: { pages: {} } });
+      throw new Error("Overpass unavailable");
+    }));
+    const { t } = await setup();
+    expect(await t.action(anyApi.sidequests.discoverNearbySidequest, origin)).toMatchObject({ destName: "Walkable landmark", destSource: "wikipedia" });
   });
 
   it("uses a named OSM destination when Wikipedia fails", async () => {

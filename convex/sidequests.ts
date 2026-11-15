@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, internalMutation, mutation, query } from "./_generated/server";
+import { findNextDispatchTime } from "./availability";
 
 type Candidate = {
   destName: string;
@@ -64,8 +65,8 @@ function candidate(lat: number, lng: number, name: unknown, destLat: unknown, de
 }
 
 async function wikipedia(lat: number, lng: number): Promise<Candidate[]> {
-  const params = new URLSearchParams({ action: "query", list: "geosearch", gscoord: `${lat}|${lng}`, gsradius: "1600", gslimit: "12", format: "json", origin: "*" });
-  const headers = { "User-Agent": "AnteHackathonApp/1.0" };
+  const params = new URLSearchParams({ action: "query", list: "geosearch", gscoord: `${lat}|${lng}`, gsradius: "1600", gslimit: "50", format: "json", origin: "*" });
+  const headers = { "User-Agent": "AnteApp/1.0 (https://github.com/yusufshaikh719/YCConsumerMobileHacks)" };
   const body = await fetchJson(`https://en.wikipedia.org/w/api.php?${params}`, { headers });
   const hits = Array.isArray(body?.query?.geosearch) ? body.query.geosearch : [];
   const ids = hits.map((hit: any) => hit.pageid).filter((id: unknown) => typeof id === "number");
@@ -85,7 +86,7 @@ async function wikipedia(lat: number, lng: number): Promise<Candidate[]> {
 async function openstreetmap(lat: number, lng: number): Promise<Candidate[]> {
   const around = `around:1500,${lat},${lng}`;
   const query = `[out:json][timeout:5];(nwr["name"]["tourism"~"^(attraction|viewpoint|artwork|museum|gallery)$"](${around});nwr["name"]["historic"](${around});nwr["name"]["leisure"~"^(park|garden)$"](${around});nwr["name"]["amenity"~"^(fountain|library|cafe)$"](${around}););out center;`;
-  const body = await fetchJson("https://overpass-api.de/api/interpreter", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ data: query }).toString() });
+  const body = await fetchJson("https://overpass-api.de/api/interpreter", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "User-Agent": "AnteApp/1.0 (https://github.com/yusufshaikh719/YCConsumerMobileHacks)" }, body: new URLSearchParams({ data: query }).toString() });
   const elements = Array.isArray(body?.elements) ? body.elements : [];
   return elements.map((element: any) => candidate(lat, lng, element.tags?.name, element.lat ?? element.center?.lat, element.lon ?? element.center?.lon, element.tags?.description, "openstreetmap", ["node", "way", "relation"].includes(element.type) && Number.isInteger(element.id) ? `https://www.openstreetmap.org/${element.type}/${element.id}` : undefined)).filter((value: Candidate | null): value is Candidate => value !== null);
 }
@@ -229,4 +230,25 @@ export const startSidequestNow = mutation({
 export const getSidequest = query({
   args: { sidequestId: v.id("sidequests") },
   handler: async (ctx, { sidequestId }) => await ctx.db.get(sidequestId),
+});
+
+export const getActiveSidequestForUser = query({
+  args: { potId: v.id("pots"), userId: v.id("users") },
+  handler: async (ctx, { potId, userId }) => {
+    const pot = await ctx.db.get(potId);
+    if (!pot) return null;
+    return await ctx.db.query("sidequests")
+      .withIndex("by_pot_user_day", q => q.eq("potId", potId).eq("userId", userId).eq("dayIndex", pot.currentDayIndex))
+      .order("desc").first();
+  },
+});
+
+export const getNextAvailabilityDispatch = query({
+  args: { potId: v.id("pots"), userId: v.id("users"), now: v.number() },
+  handler: async (ctx, { potId, userId, now }) => {
+    if (!Number.isFinite(now)) throw new Error("Invalid time");
+    const availability = await ctx.db.query("availabilityWindows")
+      .withIndex("by_pot_user", q => q.eq("potId", potId).eq("userId", userId)).unique();
+    return availability ? findNextDispatchTime(availability.slots, now, availability.timezone) : null;
+  },
 });

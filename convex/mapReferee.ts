@@ -1,11 +1,17 @@
 import { anyApi } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalAction, internalMutation, internalQuery, mutation } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { ROAST_PERSONAS } from "./personas";
 
 const point = v.object({ lat: v.number(), lng: v.number(), timestamp: v.number(), speedMps: v.optional(v.number()), accuracyM: v.optional(v.number()) });
 type Point = { lat: number; lng: number; timestamp: number; speedMps?: number; accuracyM?: number };
+
+export const getWalkSubmissionForSidequest = query({
+  args: { sidequestId: v.id("sidequests") },
+  handler: async (ctx, { sidequestId }) => await ctx.db.query("walkSubmissions")
+    .withIndex("by_sidequest", q => q.eq("sidequestId", sidequestId)).unique(),
+});
 
 function distance(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const radians = Math.PI / 180;
