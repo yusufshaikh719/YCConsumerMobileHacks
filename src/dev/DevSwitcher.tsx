@@ -5,8 +5,8 @@ import { haptic } from "../lib/haptics";
 import { useAnte, type DevTarget } from "../state/AnteProvider";
 import { Text } from "../theme/Text";
 import { colors, radius, space, touch } from "../theme/tokens";
+import { devToolsEnabled } from "./enabled";
 
-const enabled = __DEV__ || process.env.EXPO_PUBLIC_DEV_SWITCHER === "1";
 
 const TARGETS: { target: DevTarget; label: string; hint: string }[] = [
   { target: "waiting-open", label: "Waiting", hint: "Window open, armed" },
@@ -25,7 +25,7 @@ export function DevSwitcher() {
   const { jump, phase } = useAnte();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
-  if (!enabled) return null;
+  if (!devToolsEnabled) return null;
   return (
     <>
       <Pressable accessibilityLabel="Open demo state switcher" onPress={() => setOpen(true)} style={[styles.tab, { top: insets.top + 120 }]} hitSlop={12}>

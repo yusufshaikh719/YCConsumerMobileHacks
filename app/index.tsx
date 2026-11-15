@@ -1,8 +1,10 @@
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View } from "react-native";
 import { Paper } from "../src/components/Paper";
+import { Arrived } from "../src/screens/Arrived";
 import { Ping } from "../src/screens/Ping";
 import { QuestLive } from "../src/screens/QuestLive";
+import { Verifying } from "../src/screens/Verifying";
 import { Waiting } from "../src/screens/Waiting";
 import { useAnte } from "../src/state/AnteProvider";
 import { Text } from "../src/theme/Text";
@@ -13,6 +15,8 @@ export default function Home() {
   if (phase.name === "waiting") return <Waiting preview={phase.preview} />;
   if (phase.name === "ping") return <Ping key={phase.quest.id} quest={phase.quest} />;
   if (phase.name === "live") return <QuestLive key={phase.quest.id} quest={phase.quest} />;
+  if (phase.name === "arrived") return <Arrived key={phase.quest.id} quest={phase.quest} />;
+  if (phase.name === "verifying") return <Verifying quest={phase.quest} photoUri={phase.photoUri} />;
   return (
     <Paper>
       <StatusBar style="dark" />

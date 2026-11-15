@@ -84,7 +84,7 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
               {data.standings.slice(0, 4).map((s, i) => <View key={s.member.id} style={{ marginLeft: i ? -8 : 0 }}><Avatar member={s.member} size={28} ring={colors.card} /></View>)}
             </View>
             <Text variant="small" color={colors.inkSoft} style={styles.flex} numberOfLines={2}>
-              {me?.rank === 1 ? `You lead with ${me.completed} stamps` : me?.completed === leader?.completed ? `Tied with ${leader?.member.name} at ${me?.completed}, she's quicker` : `${leader?.member.name} leads with ${leader?.completed}, you have ${me?.completed ?? 0}`}. Pot pays out {weekdayShort(data.weekEndsAt)} 9 PM.
+              {me?.rank === 1 ? `You lead with ${me.completed} stamps` : me?.completed === leader?.completed ? `Tied at ${me?.completed} with ${leader?.member.name}, who was faster` : `${leader?.member.name} leads with ${leader?.completed}, you have ${me?.completed ?? 0}`}. Pot pays out {weekdayShort(data.weekEndsAt)} 9 PM.
             </Text>
           </View>
         </Pressable>

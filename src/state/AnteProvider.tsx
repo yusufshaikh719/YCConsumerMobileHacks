@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useSyncExternalStore, type ReactNode } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
+import { devToolsEnabled } from "../dev/enabled";
 import { distanceMeters } from "../lib/geo";
 import { cancelPing, enableNotifications, onPingNotification, schedulePing } from "../lib/notifications";
 import { simulatedPosition, useDevicePosition, useHeading } from "../lib/position";
@@ -132,6 +133,12 @@ export function AnteProvider({ children }: { children: ReactNode }) {
       if (result.ok) dispatch({ type: "DEV_JUMP", phase: { name: "verified", quest, result } });
     }
   }, [firePing]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || !devToolsEnabled) return;
+    const target = new URLSearchParams(globalThis.location?.search ?? "").get("state");
+    if (target) void jump(target as DevTarget);
+  }, [jump]);
 
   return (
     <AnteContext.Provider value={{ phase, data, position, heading, locationDenied: device.denied, dispatch, jump }}>
