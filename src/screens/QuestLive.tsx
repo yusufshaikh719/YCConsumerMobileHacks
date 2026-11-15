@@ -26,11 +26,15 @@ export function QuestLive({ quest }: { quest: Sidequest }) {
   const reduced = useReducedMotion();
   const [showMap, setShowMap] = useState(false);
   const entry = useRef(new Animated.Value(reduced ? 1 : 0)).current;
+  const flash = useRef(new Animated.Value(reduced ? 0 : 1)).current;
 
   useEffect(() => {
-    haptic.slam();
-    Animated.spring(entry, { toValue: 1, friction: 6, tension: 70, useNativeDriver: true }).start();
-  }, [entry]);
+    haptic.success();
+    Animated.parallel([
+      Animated.timing(flash, { toValue: 0, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.spring(entry, { toValue: 1, friction: 6, tension: 70, useNativeDriver: true }),
+    ]).start();
+  }, [entry, flash]);
 
   const here = position ?? quest.origin;
   const remaining = distanceMeters(here, quest.landmark.coords);
@@ -91,11 +95,13 @@ export function QuestLive({ quest }: { quest: Sidequest }) {
         </View>
         <LandmarkCard landmark={quest.landmark} />
       </View>
+      <Animated.View pointerEvents="none" style={[styles.flash, { opacity: flash, transform: [{ scale: flash.interpolate({ inputRange: [0, 1], outputRange: [1.6, 1] }) }] }]} />
     </Paper>
   );
 }
 
 const styles = StyleSheet.create({
+  flash: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.sprout },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: space.lg, minHeight: touch.min },
   live: { flexDirection: "row", alignItems: "center", gap: space.xs },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.sprout },
