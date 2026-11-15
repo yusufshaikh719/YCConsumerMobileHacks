@@ -1,30 +1,28 @@
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, View } from "react-native";
-import { Paper } from "../src/components/Paper";
 import { Arrived } from "../src/screens/Arrived";
+import { Failed } from "../src/screens/Failed";
 import { Ping } from "../src/screens/Ping";
 import { QuestLive } from "../src/screens/QuestLive";
+import { Verified } from "../src/screens/Verified";
 import { Verifying } from "../src/screens/Verifying";
 import { Waiting } from "../src/screens/Waiting";
 import { useAnte } from "../src/state/AnteProvider";
-import { Text } from "../src/theme/Text";
-import { colors } from "../src/theme/tokens";
 
 export default function Home() {
   const { phase } = useAnte();
-  if (phase.name === "waiting") return <Waiting preview={phase.preview} />;
-  if (phase.name === "ping") return <Ping key={phase.quest.id} quest={phase.quest} />;
-  if (phase.name === "live") return <QuestLive key={phase.quest.id} quest={phase.quest} />;
-  if (phase.name === "arrived") return <Arrived key={phase.quest.id} quest={phase.quest} />;
-  if (phase.name === "verifying") return <Verifying quest={phase.quest} photoUri={phase.photoUri} />;
-  return (
-    <Paper>
-      <StatusBar style="dark" />
-      <View style={styles.center}>
-        <Text variant="hero" color={colors.ink}>{phase.name.toUpperCase()}</Text>
-      </View>
-    </Paper>
-  );
+  switch (phase.name) {
+    case "waiting":
+      return <Waiting preview={phase.preview} />;
+    case "ping":
+      return <Ping key={phase.quest.id} quest={phase.quest} />;
+    case "live":
+      return <QuestLive key={phase.quest.id} quest={phase.quest} />;
+    case "arrived":
+      return <Arrived key={phase.quest.id} quest={phase.quest} />;
+    case "verifying":
+      return <Verifying quest={phase.quest} photoUri={phase.photoUri} />;
+    case "verified":
+      return <Verified result={phase.result} />;
+    case "failed":
+      return <Failed quest={phase.quest} reason={phase.reason} />;
+  }
 }
-
-const styles = StyleSheet.create({ center: { flex: 1, alignItems: "center", justifyContent: "center" } });

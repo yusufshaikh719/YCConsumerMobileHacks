@@ -1,27 +1,24 @@
 import { StyleSheet, View } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle } from "react-native-svg";
 import { Text } from "../theme/Text";
 import { colors, fontFamily } from "../theme/tokens";
 
-type Props = { size: number; top: string; middle: string; bottom: string; color?: string; rotate?: number };
+type Props = { size: number; top: string; middle: string; bottom: string; color?: string; rotate?: number; fill?: string };
 
-export function Postmark({ size, top, middle, bottom, color = colors.leaf, rotate = -12 }: Props) {
+export function Postmark({ size, top, middle, bottom, color = colors.leaf, rotate = -12, fill = "rgba(251,249,242,0.6)" }: Props) {
   const c = size / 2;
-  const wave = Array.from({ length: 4 }, (_, i) => {
-    const y = c - size * 0.12 + i * size * 0.08;
-    return `M${size * 0.86} ${y} q${size * 0.06} -${size * 0.04} ${size * 0.12} 0 t${size * 0.12} 0`;
-  }).join(" ");
   return (
-    <View style={{ width: size, height: size, transform: [{ rotate: `${rotate}deg` }] }} accessibilityLabel={`Stamped ${middle} ${bottom}`}>
-      <Svg width={size * 1.2} height={size} style={StyleSheet.absoluteFill}>
-        <Circle cx={c} cy={c} r={c - 2} stroke={color} strokeWidth={2.5} fill="none" />
-        <Circle cx={c} cy={c} r={c - 8} stroke={color} strokeWidth={1} fill="none" />
-        <Path d={wave} stroke={color} strokeWidth={1.5} fill="none" />
+    <View style={{ width: size, height: size, transform: [{ rotate: `${rotate}deg` }] }} accessibilityLabel={`Stamped ${top}, ${middle}, ${bottom}`}>
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Circle cx={c} cy={c} r={c - 2} stroke={color} strokeWidth={Math.max(2, size * 0.022)} fill={fill} />
+        <Circle cx={c} cy={c} r={c - size * 0.07} stroke={color} strokeWidth={1} strokeDasharray="2 3" fill="none" />
       </Svg>
       <View style={[StyleSheet.absoluteFill, styles.center]}>
-        <Text style={[styles.small, { color, fontSize: size * 0.13 }]}>{top}</Text>
-        <Text style={[styles.big, { color, fontSize: size * 0.26, lineHeight: size * 0.28 }]} numberOfLines={1}>{middle}</Text>
-        <Text style={[styles.small, { color, fontSize: size * 0.13 }]}>{bottom}</Text>
+        <Text style={[styles.text, { color, fontSize: size * 0.12, maxWidth: size * 0.68 }]} numberOfLines={1} adjustsFontSizeToFit>{top}</Text>
+        <View style={[styles.rule, { backgroundColor: color, width: size * 0.62 }]} />
+        <Text style={[styles.text, { color, fontSize: size * 0.22, lineHeight: size * 0.25, maxWidth: size * 0.78 }]} numberOfLines={1} adjustsFontSizeToFit>{middle}</Text>
+        <View style={[styles.rule, { backgroundColor: color, width: size * 0.62 }]} />
+        <Text style={[styles.text, { color, fontSize: size * 0.12, maxWidth: size * 0.6 }]} numberOfLines={1} adjustsFontSizeToFit>{bottom}</Text>
       </View>
     </View>
   );
@@ -29,6 +26,6 @@ export function Postmark({ size, top, middle, bottom, color = colors.leaf, rotat
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center" },
-  small: { fontFamily: fontFamily.display, letterSpacing: 1.2 },
-  big: { fontFamily: fontFamily.display, letterSpacing: 0.5 },
+  text: { fontFamily: fontFamily.display, letterSpacing: 1 },
+  rule: { height: 1, opacity: 0.6, marginVertical: 1 },
 });
