@@ -7,13 +7,13 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 
-type Props = { potId: Id<"pots">; userId: Id<"users">; dayIndex: number; habitPrompt: string; allowSimulatedDemo: boolean; onClose: () => void };
+type Props = { potId: Id<"pots">; userId: Id<"users">; allowSimulatedDemo: boolean; onClose: () => void };
 type Challenge = Pick<Doc<"challenges">, "promptText" | "verificationCode" | "issuedAt" | "expiresAt">;
 
 const getChallenge = makeFunctionReference<"query", { challengeId: Id<"challenges"> }, Challenge | null>("challenges:getChallenge");
 const message = (error: unknown) => error instanceof Error ? error.message : "Something went wrong. Please try again.";
 
-export default function LiveCamera({ potId, userId, dayIndex, habitPrompt, allowSimulatedDemo, onClose }: Props) {
+export default function LiveCamera({ potId, userId, allowSimulatedDemo, onClose }: Props) {
   const convex = useConvex();
   const issueChallenge = useMutation(api.challenges.issueCameraChallenge);
   const generateUploadUrl = useMutation(api.submissions.generateUploadUrl);
@@ -51,15 +51,13 @@ export default function LiveCamera({ potId, userId, dayIndex, habitPrompt, allow
     try {
       const id = await issueChallenge({ potId, userId });
       if (generation.current !== current) return;
-      const start = Date.now();
-      setStartedAt(start);
-      setNow(start);
+      const details = await convex.query(getChallenge, { challengeId: id });
+      if (!details) throw new Error("Challenge details are unavailable. Please retry.");
+      if (generation.current !== current) return;
+      setStartedAt(details.issuedAt);
+      setNow(Date.now());
+      setChallenge(details);
       setChallengeId(id);
-      setIssuing(false);
-      try {
-        const details = await convex.query(getChallenge, { challengeId: id });
-        if (generation.current === current && details) setChallenge(details);
-      } catch {}
     } catch (err) {
       if (generation.current === current) setError(message(err));
     } finally {
@@ -122,10 +120,6 @@ export default function LiveCamera({ potId, userId, dayIndex, habitPrompt, allow
 
   const expiresAt = Math.min(startedAt + 60_000, challenge?.expiresAt ?? Infinity);
   const seconds = startedAt ? Math.max(0, Math.ceil((expiresAt - now) / 1000)) : 0;
-  let legacyHash = 0;
-  for (const char of `${potId}:${userId}:${dayIndex}`) legacyHash = (Math.imul(legacyHash, 31) + char.charCodeAt(0)) >>> 0;
-  const legacyCode = String(legacyHash % 1000000).padStart(6, "0");
-
   const capture = async () => {
     if (!challengeId || busy || seconds === 0) return;
     const current = generation.current;
@@ -186,7 +180,7 @@ export default function LiveCamera({ potId, userId, dayIndex, habitPrompt, allow
   };
 
   const title = submission?.verdict === "passed" ? "Proof accepted" : submission?.verdict === "failed_spoof" ? "Spoof detected" : submission?.verdict === "failed_habit" ? "Habit not verified" : "Referee is reviewing";
-  const canCapture = challengeId && seconds > 0 && !issuing && !busy && (Platform.OS === "web" ? cameraState === "live" || (cameraState === "simulated" && allowSimulatedDemo) : permission?.granted);
+  const canCapture = challengeId && challenge && seconds > 0 && !issuing && !busy && (Platform.OS === "web" ? cameraState === "live" || (cameraState === "simulated" && allowSimulatedDemo) : permission?.granted);
 
   return (
     <View style={styles.screen}>
@@ -211,8 +205,8 @@ export default function LiveCamera({ potId, userId, dayIndex, habitPrompt, allow
           <>
             <View style={styles.challenge}>
               <View style={styles.row}><Text style={styles.eyebrow}>YOUR CHALLENGE</Text><Text style={styles.timer}>{issuing ? "--" : `${seconds}s`}</Text></View>
-              <Text style={styles.prompt}>{challenge?.promptText || habitPrompt}</Text>
-              <Text style={styles.muted}>{challenge?.verificationCode ? `Verification code: ${challenge.verificationCode}` : challengeId ? `Wave 1 code (unconfirmed): ${legacyCode}` : "Waiting for challenge…"}</Text>
+              <Text style={styles.prompt}>{challenge?.promptText ?? "Waiting for challenge…"}</Text>
+              {challenge && <Text style={styles.muted}>Verification code: {challenge.verificationCode}</Text>}
               <View style={styles.track}><View style={[styles.progress, { width: `${Math.max(0, Math.min(100, seconds / 60 * 100))}%` }]} /></View>
               <Text style={styles.caption}>60-second capture window{challenge ? " · server expiry may be sooner" : " · challenge details unavailable"}</Text>
             </View>

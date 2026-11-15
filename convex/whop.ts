@@ -1,10 +1,39 @@
 import { v } from "convex/values";
+import { WhopClient, WhopEnvironment } from "@whop/sdk";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { action, internalAction, internalQuery } from "./_generated/server";
 
+export const createPremiumCheckout = action({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }): Promise<{ purchase_url: string | null; mode: "live" | "fallback" }> => {
+    const token = process.env.WHOP_API_KEY;
+    if (!token) return { purchase_url: null, mode: "fallback" };
+    const client = new WhopClient({
+      token,
+      environment: process.env.WHOP_ENVIRONMENT === "production" ? WhopEnvironment.Production : WhopEnvironment.Sandbox,
+      timeoutInSeconds: 8,
+      maxRetries: 0,
+    });
+    const purchaseId = await ctx.runMutation(internal.premium.startPurchase, { userId });
+    let checkout;
+    try {
+      checkout = await client.checkoutConfigurations.create({
+        variant: { title: "Stakes Premium", billing_type: "one_time", initial_price: 10, currency: "usd" },
+        metadata: { userId, purchaseId, purpose: "premium" },
+      });
+    } catch {
+      return { purchase_url: null, mode: "fallback" };
+    }
+    if (!checkout.purchase_url) return { purchase_url: null, mode: "fallback" };
+    await ctx.runMutation(internal.premium.attachCheckout, { purchaseId, whopCheckoutId: checkout.id });
+    return { purchase_url: checkout.purchase_url, mode: "live" };
+  },
+});
+
 async function whopPost(path: string, body: object, apiKey: string): Promise<Record<string, unknown>> {
-  const response = await fetch(`https://api.whop.com/api/v1/${path}`, {
+  const baseUrl = process.env.WHOP_ENVIRONMENT === "production" ? "https://api.whop.com" : "https://sandbox-api.whop.com";
+  const response = await fetch(`${baseUrl}/api/v1/${path}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Api-Version-Date": "2026-11-13-1" },
     body: JSON.stringify(body),

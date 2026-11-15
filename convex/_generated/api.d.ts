@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as lib_contracts from "../lib/contracts.js";
 import type * as personas from "../personas.js";
 import type * as pots from "../pots.js";
+import type * as premium from "../premium.js";
 import type * as referee from "../referee.js";
 import type * as settlement from "../settlement.js";
 import type * as submissions from "../submissions.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   "lib/contracts": typeof lib_contracts;
   personas: typeof personas;
   pots: typeof pots;
+  premium: typeof premium;
   referee: typeof referee;
   settlement: typeof settlement;
   submissions: typeof submissions;
