@@ -7,9 +7,11 @@ import { OfflineBanner } from "../components/OfflineBanner";
 import { Paper } from "../components/Paper";
 import { Perforation } from "../components/Perforation";
 import { Postmark } from "../components/Postmark";
+import { PotStatus } from "../components/PotStatus";
 import { WindowEditor } from "../components/WindowEditor";
 import { haptic } from "../lib/haptics";
 import { money } from "../lib/money";
+import { weekdayShort } from "../lib/time";
 import { parseInviteCode } from "../lib/windows";
 import { ante } from "../services";
 import type { FreeWindow } from "../services/types";
@@ -29,7 +31,7 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
   const { data } = useAnte();
   const insets = useSafeAreaInsets();
   const me = data.group.members.find(m => m.id === data.meId);
-  const [step, setStep] = useState<"group" | "windows">("group");
+  const [step, setStep] = useState<"group" | "pot" | "windows">("group");
   const [mode, setMode] = useState<Mode>(inviteCode ? "join" : data.onboarded ? "keep" : "create");
   const [name, setName] = useState(me?.fullName === "You" ? "" : me?.fullName ?? "");
   const [groupName, setGroupName] = useState("");
@@ -56,7 +58,7 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
     }
     haptic.select();
     setError(null);
-    setStep("windows");
+    setStep(mode === "keep" ? "windows" : "pot");
   };
 
   const finish = async () => {
@@ -80,15 +82,17 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
           <View style={styles.card}>
             <View style={styles.cardTop}>
               <View style={styles.flex}>
-                <Text variant="label" color={colors.leaf}>Step {step === "group" ? 1 : 2} of 2</Text>
-                <Text variant="display">{step === "group" ? "Pick your crew." : "When are you free?"}</Text>
+                <Text variant="label" color={colors.leaf}>Step {step === "group" ? 1 : step === "pot" ? 2 : 3} of 3</Text>
+                <Text variant="display">{step === "group" ? "Pick your crew." : step === "pot" ? "Fund the pot." : "When are you free?"}</Text>
               </View>
-              <Postmark size={84} top="ANTE" middle={step === "group" ? "CREW" : "WINDOWS"} bottom={step === "group" ? "STEP 1" : "STEP 2"} rotate={-8} fill="transparent" />
+              <Postmark size={84} top="ANTE" middle={step === "group" ? "CREW" : step === "pot" ? "POT" : "WINDOWS"} bottom={step === "group" ? "STEP 1" : step === "pot" ? "STEP 2" : "STEP 3"} rotate={-8} fill="transparent" />
             </View>
             <Text variant="body" color={colors.inkSoft}>
               {step === "group"
                 ? "One surprise sidequest a day. Walk to a nearby landmark, stamp your passport, and race your group for the pot."
-                : "Add the times you could drop everything for a short walk. Ante pings you at one random minute inside them."}
+                : step === "pot"
+                  ? `Everyone puts ${money(data.stakeCents)} into this week's pot. Most stamps by ${weekdayShort(data.weekEndsAt)} 9 PM takes it all.`
+                  : "Add the times you could drop everything for a short walk. Ante pings you at one random minute inside them."}
             </Text>
             <Perforation color={colors.paper} edge="bottom" count={22} />
           </View>
@@ -131,13 +135,19 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
               )}
 
               {error && mode !== "keep" && <Text variant="small" color={colors.warn}>{error}</Text>}
-              <Button label="Next: your windows" onPress={() => void toWindows()} />
+              <Button label={mode === "keep" ? "Next: your windows" : "Next: fund the pot"} onPress={() => void toWindows()} />
+            </>
+          ) : step === "pot" ? (
+            <>
+              <PotStatus data={data} style={styles.pot} />
+              <Button label="Next: your windows" onPress={() => { haptic.select(); setStep("windows"); }} />
+              <Button kind="quiet" label="Back" onPress={() => setStep("group")} />
             </>
           ) : (
             <>
               <WindowEditor windows={windows} onChange={setWindows} />
               <Button label={data.onboarded ? "Save" : "Start playing"} onPress={() => void finish()} />
-              <Button kind="quiet" label="Back" onPress={() => setStep("group")} />
+              <Button kind="quiet" label="Back" onPress={() => setStep(mode === "keep" ? "group" : "pot")} />
             </>
           )}
         </ScrollView>
@@ -148,6 +158,7 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  pot: { marginHorizontal: 0, marginTop: 0 },
   card: { marginTop: space.sm, padding: space.lg, gap: space.sm, backgroundColor: colors.card, borderRadius: radius.sm, shadowColor: "#3B3424", shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   cardTop: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   field: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.cardEdge, padding: space.md, gap: space.xxs },

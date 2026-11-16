@@ -12,7 +12,7 @@ describe("secondary screens", () => {
   it("ONBOARDING in offline mode says so and won't fake-join a friend's code", async () => {
     await wrap(<Onboarding inviteCode="LEBHPI" onDone={() => undefined} />);
     expect(screen.getByText("Offline mode: not synced")).toBeTruthy();
-    await fireEvent.press(screen.getByText("Next: your windows"));
+    await fireEvent.press(screen.getByText("Next: fund the pot"));
     expect(screen.getByText(/^We couldn't find that group/)).toBeTruthy();
     expect(ante.getSnapshot().group.inviteCode).toBe("HILL42");
   });

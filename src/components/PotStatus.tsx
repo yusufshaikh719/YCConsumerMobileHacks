@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Linking, StyleSheet, View } from "react-native";
+import { Linking, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { money } from "../lib/money";
 import { weekdayShort } from "../lib/time";
 import { ante } from "../services";
@@ -9,16 +9,16 @@ import { colors, radius, space } from "../theme/tokens";
 import { Button } from "./Button";
 
 const TRANSFER_COPY = {
-  whop: "paid out by Whop sandbox transfer",
+  whop: "paid out by Whop transfer",
   pending: "Whop transfer still processing",
   fallback: "recorded in Ante only, no Whop transfer went out",
 } as const;
 
-export function PotStatus({ data }: { data: AnteSnapshot }) {
+export function PotStatus({ data, style }: { data: AnteSnapshot; style?: StyleProp<ViewStyle> }) {
   const [opening, setOpening] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const { funding } = data;
-  const sandbox = funding.payments === "sandbox";
+  const live = funding.payments !== "unavailable";
 
   const buyIn = async () => {
     setOpening(true);
@@ -27,7 +27,7 @@ export function PotStatus({ data }: { data: AnteSnapshot }) {
       const checkout = await ante.buyIn();
       if (checkout.url) {
         await Linking.openURL(checkout.url);
-        setNotice(sandbox ? "Finish the test payment in Whop sandbox. The pot updates here as soon as Whop confirms it." : "Finish the payment in Whop. The pot updates here as soon as Whop confirms it.");
+        setNotice("Finish the payment in Whop. The pot updates here as soon as Whop confirms it.");
       } else {
         setNotice("Whop checkout isn't available right now, so nothing was charged and the pot is unchanged.");
       }
@@ -40,7 +40,7 @@ export function PotStatus({ data }: { data: AnteSnapshot }) {
 
   if (data.backend === "local") {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, style]}>
         <Text variant="label" color={colors.warn}>Offline mode</Text>
         <Text variant="small" color={colors.inkSoft}>This build isn't connected to the group server, so your group and pot live only on this phone and no money moves.</Text>
       </View>
@@ -49,11 +49,11 @@ export function PotStatus({ data }: { data: AnteSnapshot }) {
 
   const payout = funding.lastPayout;
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, style]}>
       <View style={styles.row}>
         <Text variant="label" color={colors.muted}>Weekly buy-in</Text>
-        <View style={[styles.badge, !sandbox && styles.badgeOff]}>
-          <Text variant="label" color={sandbox ? colors.moss : colors.warn}>{sandbox ? "Whop sandbox · test money" : funding.payments === "production" ? "Whop" : "Payments off"}</Text>
+        <View style={[styles.badge, !live && styles.badgeOff]}>
+          <Text variant="label" color={live ? colors.moss : colors.warn}>{live ? "Whop" : "Payments off"}</Text>
         </View>
       </View>
       <Text variant="bodyStrong">
@@ -65,8 +65,8 @@ export function PotStatus({ data }: { data: AnteSnapshot }) {
         <Text variant="small" color={colors.leaf}>You're in for {money(data.stakeCents)} this week.</Text>
       ) : (
         <>
-          <Text variant="small" color={colors.inkSoft}>Put {money(data.stakeCents)} in through Whop{sandbox ? " sandbox (test cards only, no real money)" : ""}. Most stamps by {weekdayShort(data.weekEndsAt)} 9 PM takes the pot.</Text>
-          <Button label={opening ? "Opening Whop…" : `Buy in ${money(data.stakeCents)}${sandbox ? " (sandbox)" : ""}`} onPress={() => void (opening ? undefined : buyIn())} />
+          <Text variant="small" color={colors.inkSoft}>Put {money(data.stakeCents)} in through Whop. Most stamps by {weekdayShort(data.weekEndsAt)} 9 PM takes the pot.</Text>
+          <Button label={opening ? "Opening Whop…" : `Buy in ${money(data.stakeCents)}`} onPress={() => void (opening ? undefined : buyIn())} />
         </>
       )}
       {notice && <Text variant="small" color={colors.inkSoft}>{notice}</Text>}
