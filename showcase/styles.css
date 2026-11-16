@@ -151,7 +151,8 @@ body[data-theme="moss"] { background: var(--moss); }
 .node ul { list-style: none; display: flex; flex-direction: column; gap: 18px; border-top: 2px dashed var(--rule); padding-top: 26px; }
 .node li { font-size: 26px; line-height: 1.32; color: var(--ink-soft); padding-left: 30px; position: relative; }
 .node li::before { content: ""; position: absolute; left: 0; top: 12px; width: 12px; height: 12px; border-radius: 50%; background: var(--leaf); }
-.tested { display: flex; align-items: center; gap: 22px; align-self: flex-start; padding: 16px 30px 16px 26px; border: 2px dashed var(--rule); border-radius: 999px; font-size: 28px; font-weight: 600; color: var(--ink); }
+.pills { display: flex; gap: 20px; }
+.tested { display: flex; align-items: center; gap: 22px; padding: 16px 30px 16px 26px; border: 2px dashed var(--rule); border-radius: 999px; font-size: 28px; font-weight: 600; color: var(--ink); }
 .tested .label { color: var(--leaf); font-size: 18px; }
 .link { position: relative; display: flex; align-items: center; justify-content: center; }
 .link::before { content: ""; position: absolute; left: 10px; right: 10px; top: 50%; border-top: 3px dotted var(--leaf); transform: scaleX(0); transform-origin: left; }
