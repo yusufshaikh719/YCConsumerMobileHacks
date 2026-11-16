@@ -1,10 +1,11 @@
-import { CameraView, useCameraPermissions } from "expo-camera";
+import type { CameraView, PermissionResponse } from "expo-camera";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Linking, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Paper } from "../components/Paper";
 import { devToolsEnabled } from "../dev/enabled";
+import { loadCamera } from "../lib/camera";
 import { haptic } from "../lib/haptics";
 import { formatMinSec } from "../lib/time";
 import { useNow } from "../lib/useNow";
@@ -15,13 +16,15 @@ import { Text } from "../theme/Text";
 import { colors, radius, space, touch } from "../theme/tokens";
 
 const INTRO_MS = 1300;
+const noCamera = (): [PermissionResponse | null, () => Promise<unknown>] => [null, async () => null];
 
 export function Arrived({ quest }: { quest: Sidequest }) {
   const { dispatch } = useAnte();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const now = useNow(1000);
-  const [permission, requestPermission] = useCameraPermissions();
+  const cam = loadCamera();
+  const [permission, requestPermission] = (cam?.useCameraPermissions ?? noCamera)();
   const camera = useRef<CameraView>(null);
   const [intro, setIntro] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -74,7 +77,7 @@ export function Arrived({ quest }: { quest: Sidequest }) {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      {permission?.granted && <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="front" mirror animateShutter={false} />}
+      {cam && permission?.granted && <cam.CameraView ref={camera} style={StyleSheet.absoluteFill} facing="front" mirror animateShutter={false} />}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: reveal }]}>
         <View style={[styles.topShade, { paddingTop: insets.top + space.sm }]}>
           <View style={styles.hintRow}>
@@ -84,7 +87,12 @@ export function Arrived({ quest }: { quest: Sidequest }) {
         </View>
 
         <View style={styles.middle}>
-          {denied ? (
+          {!cam ? (
+            <View style={styles.permission}>
+              <Text variant="heading">Camera isn't available</Text>
+              <Text variant="body" color={colors.inkSoft}>This build of Ante can't open the camera, so the selfie can't be taken here.</Text>
+            </View>
+          ) : denied ? (
             <View style={styles.permission}>
               <Text variant="heading">Camera is off</Text>
               <Text variant="body" color={colors.inkSoft}>Ante needs the front camera for your sidequest selfie. Photos are taken in the app only.</Text>
@@ -107,7 +115,7 @@ export function Arrived({ quest }: { quest: Sidequest }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Take selfie"
-            disabled={busy || !!denied}
+            disabled={busy || !!denied || (!cam && !devToolsEnabled)}
             onPress={() => void capture()}
             style={({ pressed }) => [styles.shutter, (pressed || busy) && styles.shutterPressed]}
           >

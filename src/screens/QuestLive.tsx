@@ -10,6 +10,7 @@ import { TimerRing } from "../components/TimerRing";
 import { bearingDegrees, distanceMeters, formatDistance } from "../lib/geo";
 import { walkMinutesFor } from "../services/discovery";
 import { haptic } from "../lib/haptics";
+import { locationAvailable } from "../lib/position";
 import { formatMinSec } from "../lib/time";
 import { useNow } from "../lib/useNow";
 import type { Sidequest } from "../services/types";
@@ -81,7 +82,13 @@ export function QuestLive({ quest }: { quest: Sidequest }) {
 
       <View style={styles.bottom}>
         <View style={styles.toolbar}>
-          {locationDenied ? <Text variant="small" color={colors.warn} style={styles.flex}>Location is off. Turn it on so Ante can see you arrive.</Text> : <View style={styles.flex} />}
+          {!locationAvailable() ? (
+            <Text variant="small" color={colors.warn} style={styles.flex}>Location isn't available in this build, so Ante can't see you arrive.</Text>
+          ) : locationDenied ? (
+            <Text variant="small" color={colors.warn} style={styles.flex}>Location is off. Turn it on so Ante can see you arrive.</Text>
+          ) : (
+            <View style={styles.flex} />
+          )}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={showMap ? "Show compass" : "Show map"}

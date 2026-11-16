@@ -27,6 +27,7 @@ export type DevTarget = PhaseName | "waiting-open" | "waiting-closed" | "not-ver
 
 const AnteContext = createContext<Ante | null>(null);
 const QUEST_PHASES: PhaseName[] = ["live", "arrived", "verifying"];
+const LATE_START_MS = 10 * 60_000;
 
 async function findQuest(pingAt: number): Promise<{ quest: Sidequest } | { reason: "no_landmark" | "no_location" }> {
   const located = await getCurrentFix();
@@ -68,7 +69,7 @@ export function AnteProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (phase.name !== "waiting" || !data.onboarded) return;
     const pingAt = data.nextPingAt;
-    if (!pingAt || pingAt + PING_LEAD_MS <= Date.now()) {
+    if (!pingAt || pingAt + PING_LEAD_MS + LATE_START_MS <= Date.now()) {
       void ante.armNextPing(Date.now());
       return;
     }
@@ -152,9 +153,10 @@ export function AnteProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "DEV_JUMP", phase: { name: "waiting" } });
       const pingAt = at + 10_000;
       scheduledFor.current = pingAt;
-      await cancelPing();
-      if (await enableNotifications()) await schedulePing(pingAt);
       setTimeout(() => void firePing(pingAt), 10_000);
+      const ok = await enableNotifications();
+      setNotificationsOn(ok);
+      if (ok) await schedulePing(pingAt).catch(() => undefined);
       return;
     }
     if (target === "ping") {

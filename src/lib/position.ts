@@ -1,12 +1,18 @@
-import * as Location from "expo-location";
+import type * as LocationModule from "expo-location";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import type { Fix } from "../services/types";
+import { optionalNative } from "./native";
 
-const toFix = (loc: Location.LocationObject): Fix => ({ lat: loc.coords.latitude, lng: loc.coords.longitude, accuracy: loc.coords.accuracy });
+const loadLocation = optionalNative(["ExpoLocation"], () => require("expo-location") as typeof LocationModule);
+
+export const locationAvailable = () => loadLocation() !== null;
+
+const toFix = (loc: LocationModule.LocationObject): Fix => ({ lat: loc.coords.latitude, lng: loc.coords.longitude, accuracy: loc.coords.accuracy });
 
 export async function getCurrentFix(): Promise<{ fix: Fix } | { denied: true } | { unavailable: true }> {
-  if (Platform.OS === "web") return { unavailable: true };
+  const Location = loadLocation();
+  if (Platform.OS === "web" || !Location) return { unavailable: true };
   try {
     const { granted } = await Location.requestForegroundPermissionsAsync();
     if (!granted) return { denied: true };
@@ -25,8 +31,9 @@ export function useDevicePosition(active: boolean) {
   const [position, setPosition] = useState<Fix | null>(null);
   const [denied, setDenied] = useState(false);
   useEffect(() => {
-    if (!active || Platform.OS === "web") return;
-    let sub: Location.LocationSubscription | null = null;
+    const Location = loadLocation();
+    if (!active || Platform.OS === "web" || !Location) return;
+    let sub: LocationModule.LocationSubscription | null = null;
     let cancelled = false;
     void (async () => {
       const { granted } = await Location.requestForegroundPermissionsAsync();
@@ -46,8 +53,9 @@ export function useDevicePosition(active: boolean) {
 export function useHeading(active: boolean) {
   const [heading, setHeading] = useState<number | null>(null);
   useEffect(() => {
-    if (!active || Platform.OS === "web") return;
-    let sub: Location.LocationSubscription | null = null;
+    const Location = loadLocation();
+    if (!active || Platform.OS === "web" || !Location) return;
+    let sub: LocationModule.LocationSubscription | null = null;
     let cancelled = false;
     void (async () => {
       const { granted } = await Location.requestForegroundPermissionsAsync();

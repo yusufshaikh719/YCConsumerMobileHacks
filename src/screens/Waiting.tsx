@@ -11,6 +11,7 @@ import { Paper } from "../components/Paper";
 import { Postcard } from "../components/Postcard";
 import { PotStatus } from "../components/PotStatus";
 import { money, ordinal } from "../lib/money";
+import { notificationsAvailable } from "../lib/notifications";
 import { formatTimeOfDay, isInWindows, isSameDay, nextWindowStart, weekdayShort } from "../lib/time";
 import { useNow } from "../lib/useNow";
 import { useAnte } from "../state/AnteProvider";
@@ -56,7 +57,13 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
           </Text>
         </View>
 
-        {notificationsOn === false && (
+        {notificationsOn === false && !notificationsAvailable() && (
+          <View style={styles.notice}>
+            <Text variant="bodyStrong">Notifications aren't available in this build</Text>
+            <Text variant="small" color={colors.inkSoft}>You'll only see a sidequest ping while Ante is open.</Text>
+          </View>
+        )}
+        {notificationsOn === false && notificationsAvailable() && (
           <Pressable accessibilityRole="button" onPress={() => void retryNotifications()} style={({ pressed }) => [styles.notice, pressed && styles.pressed]}>
             <Text variant="bodyStrong">Turn on notifications</Text>
             <Text variant="small" color={colors.inkSoft}>Ante gives you one minute's warning before a sidequest. Without notifications, you'll only see it with the app open.</Text>

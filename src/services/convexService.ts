@@ -22,6 +22,7 @@ type Saved = {
   potId: string | null;
   windows: FreeWindow[];
   onboarded: boolean;
+  nextPingAt?: number | null;
 };
 
 type Deps = {
@@ -95,7 +96,6 @@ export function createConvexService({
   let group: Group | null = null;
   let unwatch: (() => void) | null = null;
   let loaded = false;
-  let nextPingAt: number | null = null;
 
   const member = (id: string, fullName: string, index: number, mine: boolean): Member => ({
     id,
@@ -123,7 +123,7 @@ export function createConvexService({
       windows: saved.windows,
       postcards,
       standings: rankStandings(members, postcards),
-      nextPingAt,
+      nextPingAt: saved.nextPingAt ?? null,
     };
   };
 
@@ -225,8 +225,7 @@ export function createConvexService({
     },
     async setWindows(windows) {
       if (!validWindows(windows)) throw new Error("Windows must not overlap");
-      saved = { ...saved, windows: sortWindows(windows) };
-      nextPingAt = null;
+      saved = { ...saved, windows: sortWindows(windows), nextPingAt: null };
       await persist();
       await syncWindows();
     },
@@ -249,14 +248,15 @@ export function createConvexService({
       await persist();
     },
     async armNextPing(at) {
-      nextPingAt = pickPingTime(saved.windows, at);
-      emit();
+      const nextPingAt = pickPingTime(saved.windows, at);
+      saved = { ...saved, nextPingAt };
+      await persist();
       return nextPingAt;
     },
     async startSidequest(pingAt, origin) {
-      if (nextPingAt === pingAt) {
-        nextPingAt = null;
-        emit();
+      if (saved.nextPingAt === pingAt) {
+        saved = { ...saved, nextPingAt: null };
+        await persist();
       }
       if (!saved.potId) throw new Error("Join a group first");
       const landmark = await discover(origin);
