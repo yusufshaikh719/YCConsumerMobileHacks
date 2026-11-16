@@ -51,7 +51,7 @@ export function PotStatus({ data, style }: { data: AnteSnapshot; style?: StylePr
   return (
     <View style={[styles.card, style]}>
       <View style={styles.row}>
-        <Text variant="label" color={colors.muted}>Weekly buy-in</Text>
+        <Text variant="label" color={colors.muted} style={styles.title}>Weekly buy-in</Text>
         <View style={[styles.badge, !live && styles.badgeOff]}>
           <Text variant="label" color={live ? colors.moss : colors.warn}>{live ? "Whop" : "Payments off"}</Text>
         </View>
@@ -81,7 +81,8 @@ export function PotStatus({ data, style }: { data: AnteSnapshot; style?: StylePr
 
 const styles = StyleSheet.create({
   card: { marginHorizontal: space.lg, marginTop: space.lg, padding: space.md, gap: space.xs, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.cardEdge },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.xs },
-  badge: { paddingHorizontal: space.xs, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: colors.leafSoft },
+  row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: space.xs },
+  title: { flexShrink: 1 },
+  badge: { flexShrink: 1, maxWidth: "100%", paddingHorizontal: space.xs, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: colors.leafSoft },
   badgeOff: { backgroundColor: colors.paper },
 });

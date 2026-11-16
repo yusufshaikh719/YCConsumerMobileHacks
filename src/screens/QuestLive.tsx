@@ -23,7 +23,8 @@ import { colors, radius, space, touch } from "../theme/tokens";
 export function QuestLive({ quest }: { quest: Sidequest }) {
   const { position, heading, locationDenied } = useAnte();
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width, height, fontScale } = useWindowDimensions();
+  const [heroHeight, setHeroHeight] = useState(0);
   const now = useNow(1000);
   const reduced = useReducedMotion();
   const [showMap, setShowMap] = useState(false);
@@ -42,7 +43,8 @@ export function QuestLive({ quest }: { quest: Sidequest }) {
   const remaining = distanceMeters(here, quest.landmark.coords);
   const distance = formatDistance(remaining);
   const bearing = bearingDegrees(here, quest.landmark.coords);
-  const ring = Math.min(width - space.xl * 2, height * 0.42, 340);
+  const below = (96 + 23) * Math.min(fontScale, 1.15) + space.sm + space.xs * 2;
+  const ring = Math.max(88, Math.min(width - space.xl * 2, (heroHeight || height * 0.42 + below) - below, 340));
   const msLeft = quest.expiresAt - now;
 
   return (
@@ -54,14 +56,14 @@ export function QuestLive({ quest }: { quest: Sidequest }) {
           <Text variant="label" color={colors.sprout}>Sidequest live</Text>
         </View>
         <View style={styles.clock} accessibilityLabel={`${formatMinSec(msLeft)} left`}>
-          <Text variant="title" color={colors.onMoss}>{formatMinSec(msLeft)}</Text>
+          <Text variant="title" color={colors.onMoss} maxFontSizeMultiplier={1.15}>{formatMinSec(msLeft)}</Text>
           <Text variant="label" color={colors.onMossMuted}>left</Text>
         </View>
       </View>
 
-      <Animated.View style={[styles.hero, { opacity: entry, transform: [{ scale: entry.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1] }) }] }]}>
+      <Animated.View onLayout={e => setHeroHeight(e.nativeEvent.layout.height)} style={[styles.hero, { opacity: entry, transform: [{ scale: entry.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1] }) }] }]}>
         {showMap ? (
-          <View style={[styles.mapWrap, { height: ring + 96 }]}>
+          <View style={[styles.mapWrap, { height: heroHeight ? Math.min(ring + 96, heroHeight) : ring + 96 }]}>
             <QuestMap you={here} target={quest.landmark.coords} title={quest.landmark.name} />
           </View>
         ) : (
@@ -70,10 +72,10 @@ export function QuestLive({ quest }: { quest: Sidequest }) {
               <CompassArrow size={ring * 0.46} rotation={bearing - (heading ?? 0)} />
             </TimerRing>
             <View style={styles.distance} accessibilityLabel={`${distance.value} ${distance.unit === "m" ? "meters" : "kilometers"} to go`}>
-              <Text variant="hero" color={colors.onMoss} style={styles.distanceValue}>{distance.value}</Text>
-              <Text variant="title" color={colors.sprout} style={styles.unit}>{distance.unit}</Text>
+              <Text variant="hero" color={colors.onMoss} style={styles.distanceValue} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.15}>{distance.value}</Text>
+              <Text variant="title" color={colors.sprout} style={styles.unit} maxFontSizeMultiplier={1.15}>{distance.unit}</Text>
             </View>
-            <Text variant="small" color={colors.onMossMuted} align="center">
+            <Text variant="small" color={colors.onMossMuted} align="center" numberOfLines={1} maxFontSizeMultiplier={1.15}>
               {heading === null ? "Arrow is north-up · compass unavailable" : `About ${walkMinutesFor(remaining)} min on foot`}
             </Text>
           </>
@@ -114,10 +116,10 @@ const styles = StyleSheet.create({
   live: { flexDirection: "row", alignItems: "center", gap: space.xs },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.sprout },
   clock: { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  hero: { flex: 1, alignItems: "center", justifyContent: "center", gap: space.xs },
+  hero: { flex: 1, minHeight: 0, alignItems: "center", justifyContent: "center", gap: space.xs, paddingHorizontal: space.lg },
   mapWrap: { alignSelf: "stretch", marginHorizontal: space.lg },
-  distance: { flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: space.sm },
-  distanceValue: { fontSize: 96, lineHeight: 96 },
+  distance: { flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: space.sm, maxWidth: "100%" },
+  distanceValue: { fontSize: 96, lineHeight: 96, flexShrink: 1 },
   unit: { fontSize: 36, lineHeight: 36 },
   bottom: { paddingHorizontal: space.md, gap: space.sm },
   toolbar: { flexDirection: "row", alignItems: "center", gap: space.sm },

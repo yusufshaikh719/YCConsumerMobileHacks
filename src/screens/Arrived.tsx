@@ -67,7 +67,7 @@ export function Arrived({ quest }: { quest: Sidequest }) {
       <Paper tone="moss" style={styles.intro}>
         <StatusBar style="light" />
         <Text variant="label" color={colors.sprout}>You made it</Text>
-        <Text variant="hero" color={colors.onMoss} align="center" style={styles.introTitle}>{quest.landmark.name}</Text>
+        <Text variant={quest.landmark.name.length > 28 ? "display" : "hero"} color={colors.onMoss} align="center" style={styles.introTitle} numberOfLines={5} adjustsFontSizeToFit maxFontSizeMultiplier={1.15}>{quest.landmark.name}</Text>
         <Text variant="body" color={colors.onMossMuted}>Selfie time.</Text>
       </Paper>
     );
@@ -83,7 +83,7 @@ export function Arrived({ quest }: { quest: Sidequest }) {
           <View style={styles.hintRow}>
             <Text variant="label" color={colors.sprout}>{formatMinSec(quest.expiresAt - now)} left</Text>
           </View>
-          <Text variant="display" color={colors.white} align="center" style={styles.hint}>Get {quest.landmark.name} behind you.</Text>
+          <Text variant="display" color={colors.white} align="center" style={styles.hint} numberOfLines={3} adjustsFontSizeToFit maxFontSizeMultiplier={1.15}>Get {quest.landmark.name} behind you.</Text>
         </View>
 
         <View style={styles.middle}>
@@ -131,11 +131,11 @@ export function Arrived({ quest }: { quest: Sidequest }) {
 const corner = 34;
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.mossDeep },
-  intro: { alignItems: "center", justifyContent: "center", gap: space.sm, paddingHorizontal: space.lg },
+  intro: { alignItems: "center", justifyContent: "center", gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.xl },
   introTitle: { marginVertical: space.xs },
   topShade: { paddingHorizontal: space.lg, paddingBottom: space.lg, backgroundColor: "rgba(15,46,30,0.72)", gap: space.xs },
   hintRow: { alignItems: "center" },
-  hint: { fontSize: 38, lineHeight: 40 },
+  hint: { fontSize: 32, lineHeight: 34 },
   middle: { flex: 1, padding: space.xl, justifyContent: "center" },
   frame: { flex: 1, maxHeight: 420 },
   corner: { position: "absolute", width: corner, height: corner, borderColor: colors.sprout },
