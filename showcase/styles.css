@@ -52,6 +52,9 @@ body[data-theme="moss"] { background: var(--moss); }
 
 .notes { display: none; }
 
+em { font-style: normal; font-weight: 700; color: var(--leaf); }
+.moss em { color: var(--sprout); }
+
 .wordmark { font-family: var(--display); font-weight: 400; font-size: 300px; line-height: .86; letter-spacing: 2px; }
 .title { font-family: var(--display); font-weight: 400; font-size: 104px; line-height: .95; letter-spacing: 1px; }
 .lede { font-size: 46px; line-height: 1.25; font-weight: 500; color: var(--ink-soft); max-width: 900px; }
