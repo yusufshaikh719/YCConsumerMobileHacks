@@ -127,10 +127,8 @@ export function createLocalService({ storage, discover = origin => discoverLandm
     },
     async joinGroup(input) {
       const code = parseInviteCode(input);
-      if (!code) return false;
-      saved = { ...saved, group: { name: `Group ${code}`, inviteCode: code, joined: true } };
-      await persist();
-      return true;
+      if (!code) return "invalid";
+      return code === saved.group.inviteCode ? "joined" : "offline";
     },
     async finishOnboarding() {
       saved = { ...saved, onboarded: true };

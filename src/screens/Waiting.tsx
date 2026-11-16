@@ -6,6 +6,7 @@ import { ArmedIndicator } from "../components/ArmedIndicator";
 import { Avatar } from "../components/Avatar";
 import { IconButton } from "../components/IconButton";
 import { InviteCard } from "../components/InviteCard";
+import { OfflineBanner } from "../components/OfflineBanner";
 import { Paper } from "../components/Paper";
 import { Postcard } from "../components/Postcard";
 import { PotStatus } from "../components/PotStatus";
@@ -44,6 +45,8 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
             <IconButton icon="settings-outline" label="Settings" onPress={() => router.push("/settings")} />
           </View>
         </View>
+
+        {data.backend === "local" && <View style={styles.offline}><OfflineBanner /></View>}
 
         <View style={styles.hero}>
           <ArmedIndicator size={208} armed={open} />
@@ -130,6 +133,7 @@ const styles = StyleSheet.create({
   hero: { alignItems: "center", paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xl, gap: space.xs },
   state: { marginTop: space.sm },
   sub: { maxWidth: 300 },
+  offline: { marginHorizontal: space.lg, marginTop: space.sm },
   notice: { marginHorizontal: space.lg, marginBottom: space.lg, padding: space.md, gap: 4, borderRadius: radius.md, backgroundColor: colors.leafSoft, borderWidth: 1, borderColor: colors.leaf },
   sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", paddingHorizontal: space.lg, marginBottom: space.sm },
   stack: { paddingHorizontal: space.lg, paddingVertical: space.sm, paddingRight: space.xl },

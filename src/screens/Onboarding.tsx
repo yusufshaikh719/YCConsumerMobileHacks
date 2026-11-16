@@ -3,6 +3,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
+import { OfflineBanner } from "../components/OfflineBanner";
 import { Paper } from "../components/Paper";
 import { Perforation } from "../components/Perforation";
 import { Postmark } from "../components/Postmark";
@@ -17,6 +18,12 @@ import { Text } from "../theme/Text";
 import { colors, radius, space, touch } from "../theme/tokens";
 
 type Mode = "keep" | "create" | "join";
+
+const JOIN_ERRORS = {
+  invalid: "That doesn't look like an invite code. It's the 6 letters and numbers at the end of the link.",
+  not_found: "We couldn't find that group. Check the code with the friend who sent it, it's the 6 letters and numbers at the end of the link.",
+  offline: "We couldn't find that group. This phone is in offline mode, so it can't see groups made on other phones.",
+} as const;
 
 export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone: () => void }) {
   const { data } = useAnte();
@@ -36,9 +43,12 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
     try {
       if (name.trim()) await ante.setName(name);
       if (mode === "create") await ante.createGroup(groupName);
-      if (mode === "join" && !(await ante.joinGroup(code))) {
-        setError(synced ? "We couldn't find a group with that code. It's the 6 letters and numbers at the end of the link." : "That doesn't look like an invite code. It's the 6 letters and numbers at the end of the link.");
-        return;
+      if (mode === "join") {
+        const result = await ante.joinGroup(code);
+        if (result !== "joined") {
+          setError(JOIN_ERRORS[result]);
+          return;
+        }
       }
     } catch {
       setError("Couldn't reach the group server. Check your connection and try again.");
@@ -83,6 +93,7 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
             <Perforation color={colors.paper} edge="bottom" count={22} />
           </View>
 
+          {!synced && <OfflineBanner />}
           {step === "group" ? (
             <>
               <View style={styles.field}>
@@ -115,7 +126,7 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
                 <View style={styles.field}>
                   <Text variant="label" color={colors.muted}>Invite code</Text>
                   <TextInput accessibilityLabel="Invite code" value={code} onChangeText={value => { setCode(value); setError(null); }} placeholder="ante://join/ABC123" placeholderTextColor={colors.muted} autoCapitalize="characters" autoCorrect={false} style={styles.input} />
-                  {!error && <Text variant="small" color={colors.muted}>{synced ? "You'll join their group on every phone and see each other's stamps live." : "Offline mode: you'll share their code and pot rules, but friends' stamps won't show on this phone."}</Text>}
+                  {!error && <Text variant="small" color={colors.muted}>{synced ? "You'll join their group on every phone and see each other's stamps live." : "Offline mode: joining a friend's group needs the group server."}</Text>}
                 </View>
               )}
 
