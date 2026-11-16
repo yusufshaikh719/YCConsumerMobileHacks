@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ante · YC Consumer Mobile Hackathon</title>
+<meta name="description" content="Ante: a weekly prize pool with your friends. One short walk a day to win it.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="paper">
+
+<main class="deck" aria-roledescription="carousel" aria-label="Ante showcase">
+<div class="stage">
+
+<!-- 1 · Title -->
+<section class="slide paper s-title" data-chapter="Ante" aria-label="Title">
+  <div class="copy">
+    <h1 class="wordmark letters">Ante</h1>
+    <p class="lede split">A weekly <em>prize pool</em> with your friends. <em>One short walk</em> a day to win it.</p>
+    <p class="meta" data-r>YC Consumer Mobile Hackathon · November 2026</p>
+  </div>
+  <figure class="phone tilt-r" data-phone><img src="screens/waiting.jpg" alt="Ante home screen: armed, could be any minute"></figure>
+  <aside class="notes">Ante is a game you play with your friends over a week. Every day it sends each of you on a short walk somewhere real.</aside>
+</section>
+
+<!-- 2 · Problem -->
+<section class="slide moss s-problem" data-chapter="The problem" aria-label="The problem">
+  <h2 class="statement split">We see our <em>friends less</em>, and we spend most of the day <em>inside</em>.</h2>
+  <div class="stats">
+    <div class="stat" data-r>
+      <p class="num"><span data-count="150">150</span> <span class="arrow">→</span> <span data-count="40" data-from="150" data-wait="700">40</span> <small>min</small></p>
+      <p class="what">Time 15–24-year-olds spent with friends in person each day, 2003 vs. 2020</p>
+      <p class="src">U.S. Surgeon General's Advisory on Social Connection, 2023, p. 13 (from the American Time Use Survey)</p>
+    </div>
+    <div class="stat" data-r>
+      <p class="num"><span data-count="87">87</span>%</p>
+      <p class="what">Share of the day Americans spend inside buildings, plus another 6% in vehicles</p>
+      <p class="src">Klepeis et al., National Human Activity Pattern Survey, 2001</p>
+    </div>
+  </div>
+  <aside class="notes">The 2020 figure falls in a pandemic year, but the advisory shows the decline was already under way before 2020. The indoor figure is from an EPA diary study of 9,386 people. The study is old, but the authors found the share stable across a decade of surveys.</aside>
+</section>
+
+<!-- 3 · Ante -->
+<section class="slide paper s-ante" data-chapter="Ante" aria-label="Ante">
+  <div class="copy">
+    <p class="label" data-r>Ante</p>
+    <p class="body-lg split">Once a day, at a <em>random minute</em> in a window you picked, Ante gives you a <em>one-minute warning</em>.</p>
+    <p class="body-lg split">Then it shows you a <em>real landmark</em> 10–15 minutes' walk away. Get there before time runs out and take a selfie, and you've collected <em>the day's stamp</em>.</p>
+  </div>
+  <div class="pair">
+    <figure class="phone" data-phone><img src="screens/ping.jpg" alt="Ping screen: sidequest incoming, shoes on, 59 seconds"></figure>
+    <figure class="phone lower" data-phone><img src="screens/quest-live.jpg" alt="Quest live screen: compass arrow, 330 m, timer, landmark card"></figure>
+  </div>
+  <aside class="notes">The surprise matters. You don't schedule the walk, you just say when you could drop everything.</aside>
+</section>
+
+<!-- 4 · One sidequest -->
+<section class="slide paper s-steps" data-chapter="One sidequest" aria-label="One sidequest">
+  <h2 class="title split">One sidequest</h2>
+  <ol class="steps">
+    <li data-phone><figure class="phone sm"><img src="screens/ping.jpg" alt="Ping screen"></figure><p><b>One minute's warning.</b> Sent inside the windows you set during onboarding.</p></li>
+    <li data-phone><figure class="phone sm"><img src="screens/quest-live.jpg" alt="Quest live screen"></figure><p><b>A real place nearby.</b> Found on Wikipedia or OpenStreetMap from where you're standing.</p></li>
+    <li data-phone><figure class="phone sm"><img src="screens/arrived.jpg" alt="Arrived screen: get the landmark behind you, in-app camera"></figure><p><b>Proof you went.</b> GPS has to put you within 50 m, and the selfie is taken in the app.</p></li>
+    <li data-phone><figure class="phone sm"><img src="screens/verified.jpg" alt="Verified screen: postcard with stamp, stamp collected"></figure><p><b>A stamp in your passport.</b> Your group sees the postcard.</p></li>
+  </ol>
+  <aside class="notes">The time limit is twice the walk time plus five minutes, between 20 and 35 minutes. If nothing walkable is nearby, Ante says so and skips the day rather than sending you on a long trek. The camera is in-app only, with no gallery uploads.</aside>
+</section>
+
+<!-- 5 · The prize pool -->
+<section class="slide paper s-pot" data-chapter="The prize pool" aria-label="The prize pool">
+  <div class="copy">
+    <div class="stamp" aria-hidden="true"><span>Prize pool</span><b>$20</b><span>Ante</span></div>
+    <p class="body-lg split">Everyone in the group puts in <em>$20</em> for the week.</p>
+    <p class="body-lg split">Whoever completes the <em>most sidequests</em> by Sunday <em>takes the prize pool</em>. Ties split it.</p>
+  </div>
+  <div class="pair s-pot-shake">
+    <figure class="phone" data-phone><img src="screens/feed.jpg" alt="Group feed: standings, today's postcards and reactions"></figure>
+    <figure class="phone lower" data-phone><div class="cut"><img src="screens/waiting-pot.jpg" alt="Waiting screen: this week's $20, one player, pays out Sunday 9 PM"></div></figure>
+  </div>
+  <aside class="notes">Each player buys in through Whop checkout, and the stake is confirmed by a verified Whop webhook before it counts. Groups, invites, stamps and standings sync live through Convex, so everyone sees the same race. On Sunday at 9 PM the prize pool pays out to the winner through Whop.</aside>
+</section>
+
+<!-- 6 · Why money -->
+<section class="slide paper s-money" data-chapter="Why money" aria-label="Why money">
+  <h2 class="statement split"><em>Losing</em> money moves people more than <em>earning</em> it.</h2>
+  <p class="label" data-r>Share of days people hit a 7,000-step goal</p>
+  <div class="bars">
+    <div class="bar hi" data-r style="--v:45"><span class="val"><span data-count="45">45</span>%</span><i></i><span class="txt">when $1.40 was taken away for each miss</span></div>
+    <div class="bar" data-r style="--v:35"><span class="val"><span data-count="35">35</span>%</span><i></i><span class="txt">when $1.40 was paid for each success</span></div>
+    <div class="bar" data-r style="--v:30"><span class="val"><span data-count="30">30</span>%</span><i></i><span class="txt">with no incentive</span></div>
+  </div>
+  <p class="src" data-r>Patel et al., Annals of Internal Medicine, 2016. Randomized trial, 281 adults, 13 weeks.</p>
+  <aside class="notes">Only the loss version beat the control group by a significant margin. Ante works the same way: your $20 is in the prize pool from the start, and skipping means you're on track to lose it. A 2024 meta-analysis of 607 estimates puts the loss-aversion coefficient at about 1.96, so losses weigh roughly twice as much as equal gains (Brown et al., Journal of Economic Literature, 2024).</aside>
+</section>
+
+<!-- 7 · Why friends -->
+<section class="slide moss s-friends" data-chapter="Why friends" aria-label="Why friends">
+  <h2 class="statement split"><em>Competing</em> with others <em>beats</em> supporting or collaborating with them.</h2>
+  <div class="split-row">
+    <div class="hero-stat" data-r>
+      <p class="num">+<span data-count="920">920</span></p>
+      <p class="what">steps a day for the competition group, against a control group</p>
+    </div>
+    <div class="rows" data-r>
+      <div class="row hi" style="--v:920"><span>Competition</span><i></i><b>+<span data-count="920">920</span></b></div>
+      <div class="row" style="--v:689"><span>Support</span><i></i><b>+<span data-count="689">689</span></b></div>
+      <div class="row" style="--v:637"><span>Collaboration</span><i></i><b>+<span data-count="637">637</span></b></div>
+    </div>
+  </div>
+  <p class="after" data-r>It was also the <em>only group still ahead</em> after the game ended.</p>
+  <p class="src" data-r>Patel et al., JAMA Internal Medicine, 2019 (STEP UP). Randomized trial, 602 adults, 24 weeks.</p>
+  <aside class="notes">In the 12-week follow-up, only the competition arm was still significantly above control, at +569 steps a day. Ante's weekly prize pool is a competition.</aside>
+</section>
+
+<!-- 8 · How it's built -->
+<section class="slide paper s-built" data-chapter="How it's built" aria-label="How it's built">
+  <h2 class="title split">How it's built</h2>
+  <div class="diagram">
+    <div class="node" data-r>
+      <p class="label">App</p>
+      <h3>Expo · React Native</h3>
+      <ul>
+        <li>Landmarks from Wikipedia and OpenStreetMap</li>
+        <li>GPS geofence check&#8209;in with the in&#8209;app camera</li>
+        <li>Maps with react&#8209;native&#8209;maps</li>
+      </ul>
+    </div>
+    <div class="link" data-r><span>real-time</span><i></i></div>
+    <div class="node" data-r>
+      <p class="label">Backend</p>
+      <h3>Convex</h3>
+      <ul>
+        <li>Groups, prize pools and invites</li>
+        <li>Stamps and standings, synced live to every phone</li>
+      </ul>
+    </div>
+    <div class="link" data-r><span>webhooks</span><i></i></div>
+    <div class="node" data-r>
+      <p class="label">Payments</p>
+      <h3>Whop</h3>
+      <ul>
+        <li>Prize pool buy-in checkout</li>
+        <li>Payouts to the winner</li>
+        <li>Webhook&#8209;verified payments</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pills" data-r>
+    <p class="tested"><span class="label">Testing</span>Tested with Revyl</p>
+    <p class="tested"><span class="label">Building</span>Built with Capy</p>
+  </div>
+  <aside class="notes">The app is Expo and React Native. Landmark discovery queries Wikipedia's geosearch first and falls back to OpenStreetMap's Overpass API. Check-in needs a GPS fix inside the landmark's geofence plus a photo from the in-app front camera. Convex holds groups, prize pools, invites, stamps and standings and pushes changes to every phone in real time. Whop handles the $20 buy-in checkout and the Sunday payout, and its webhooks are signature-checked before a stake counts. We used Revyl for testing, including building the app in Revyl's cloud. The app and this deck were built with Capy.</aside>
+</section>
+
+<!-- 9 · Close -->
+<section class="slide moss s-close" data-chapter="Ante" aria-label="Close">
+  <div class="copy">
+    <h2 class="wordmark letters">Ante</h2>
+    <p class="lede split">A weekly <em>prize pool</em> with your friends. <em>One short walk</em> a day to win it.</p>
+    <p class="meta" data-r>Want a sidequest? We'll send one to your phone.</p>
+  </div>
+  <figure class="phone tilt-l" data-phone><img src="screens/passport.jpg" alt="Passport screen: holder Aahil, Hackathon crew, one stamp"></figure>
+  <aside class="notes">Close by offering to send a sidequest to a judge's phone live.</aside>
+</section>
+
+</div>
+</main>
+
+<div class="hud" aria-hidden="true">
+  <div class="progress"><i></i></div>
+  <span class="chapter"></span>
+  <span class="counter"><b>01</b> / <span class="total">09</span></span>
+</div>
+<nav class="nav" aria-label="Slide navigation">
+  <button class="nav-btn prev" type="button" aria-label="Previous slide">‹</button>
+  <button class="nav-btn next" type="button" aria-label="Next slide">›</button>
+</nav>
+<div class="notes-panel" role="note" aria-live="polite"></div>
+
+<script src="deck.js"></script>
+</body>
+</html>
