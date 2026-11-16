@@ -10,11 +10,13 @@ jest.mock("../lib/notifications", () => ({
   cancelPing: jest.fn(async () => undefined),
   onPingNotification: jest.fn(() => () => undefined),
   notificationsGranted: jest.fn(async () => false),
+  notificationsAvailable: () => true,
 }));
 
 jest.mock("../lib/position", () => ({
   useDevicePosition: () => ({ position: null, denied: false }),
   useHeading: () => 32,
+  locationAvailable: () => true,
   getCurrentFix: jest.fn(async () => ({ fix: { lat: 37.7694, lng: -122.4862, accuracy: 10 } })),
 }));
 

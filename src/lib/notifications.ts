@@ -1,17 +1,46 @@
-import * as Notifications from "expo-notifications";
+import type * as NotificationsModule from "expo-notifications";
 import { Platform } from "react-native";
+import { optionalNative } from "./native";
 
 const CHANNEL = "sidequest";
-const supported = Platform.OS !== "web";
 
-if (supported) {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
-  });
+let handlerSet = false;
+const loadNotifications = optionalNative(
+  [
+    "ExpoApplication",
+    "ExpoPushTokenManager",
+    "ExpoBackgroundNotificationTasksModule",
+    "ExpoBadgeModule",
+    "ExpoNotificationCategoriesModule",
+    "ExpoNotificationChannelGroupManager",
+    "ExpoNotificationChannelManager",
+    "ExpoNotificationPermissionsModule",
+    "ExpoNotificationPresenter",
+    "ExpoNotificationScheduler",
+    "ExpoNotificationsEmitter",
+    "ExpoNotificationsHandlerModule",
+    "NotificationsServerRegistrationModule",
+  ],
+  () => require("expo-notifications") as typeof NotificationsModule,
+);
+
+function notifications() {
+  if (Platform.OS === "web") return null;
+  const Notifications = loadNotifications();
+  if (Notifications && !handlerSet) {
+    handlerSet = true;
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+    });
+  }
+  return Notifications;
 }
 
+export const notificationsAvailable = () => notifications() !== null;
+
 export async function enableNotifications() {
-  if (!supported) return false;
+  const Notifications = notifications();
+  if (!Notifications) return false;
   try {
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync(CHANNEL, {
@@ -30,12 +59,14 @@ export async function enableNotifications() {
 }
 
 export async function notificationsGranted() {
-  if (!supported) return false;
+  const Notifications = notifications();
+  if (!Notifications) return false;
   return Notifications.getPermissionsAsync().then(p => p.granted).catch(() => false);
 }
 
 export async function schedulePing(pingAt: number) {
-  if (!supported) return;
+  const Notifications = notifications();
+  if (!Notifications) return;
   await Notifications.cancelAllScheduledNotificationsAsync();
   await Notifications.scheduleNotificationAsync({
     content: { title: "Sidequest in 1 minute", body: "Shoes on. Your landmark drops at zero.", data: { pingAt }, sound: true },
@@ -44,17 +75,18 @@ export async function schedulePing(pingAt: number) {
 }
 
 export async function cancelPing() {
-  if (supported) await Notifications.cancelAllScheduledNotificationsAsync().catch(() => undefined);
+  await notifications()?.cancelAllScheduledNotificationsAsync().catch(() => undefined);
 }
 
-function scheduledPingAt(notification: Notifications.Notification) {
+function scheduledPingAt(notification: NotificationsModule.Notification) {
   const value = notification.request.content.data?.pingAt;
   return typeof value === "number" ? value : null;
 }
 
 export function onPingNotification(handler: (pingAt: number) => void) {
-  if (!supported) return () => undefined;
-  const handle = (notification: Notifications.Notification) => {
+  const Notifications = notifications();
+  if (!Notifications) return () => undefined;
+  const handle = (notification: NotificationsModule.Notification) => {
     const pingAt = scheduledPingAt(notification);
     if (pingAt) handler(pingAt);
   };
