@@ -47,9 +47,9 @@ export function Verifying({ quest, photoUri }: { quest: Sidequest; photoUri: str
       <View style={styles.center}>
         <View style={[styles.card, { width: cardWidth }]}>
           <Photo source={photoUri ? { uri: photoUri } : quest.landmark.thumbnail} style={[styles.photo, { height: cardWidth * 1.15 }]} />
-          <View style={styles.caption}>
-            <Text variant="bodyStrong">{quest.landmark.name}</Text>
-            <Text variant="small" color={colors.muted}>{quest.landmark.neighborhood}</Text>
+          <View style={[styles.caption, { paddingRight: stamp }]}>
+            <Text variant="bodyStrong" numberOfLines={2}>{quest.landmark.name}</Text>
+            <Text variant="small" color={colors.muted} numberOfLines={1}>{quest.landmark.neighborhood}</Text>
           </View>
           <Perforation color={colors.paper} edge="top" count={20} />
           <Perforation color={colors.paper} edge="bottom" count={20} />
@@ -74,7 +74,7 @@ export function Verifying({ quest, photoUri }: { quest: Sidequest; photoUri: str
       </View>
       <View style={styles.status} accessibilityLiveRegion="polite">
         <Text variant="label" color={colors.leaf}>Verifying</Text>
-        <Text variant="title" align="center">{steps[step]}</Text>
+        <Text variant="title" align="center" numberOfLines={2}>{steps[step]}</Text>
         <View style={styles.dots}>
           {steps.map((_, i) => <View key={i} style={[styles.dot, i <= step && styles.dotOn]} />)}
         </View>

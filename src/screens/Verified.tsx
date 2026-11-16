@@ -60,8 +60,8 @@ export function Verified({ result }: { result: Result }) {
         <Text variant="label" color={colors.leaf}>Sidequest complete</Text>
         <View style={[styles.card, { width: cardWidth }]}>
           <Photo source={postcard.photo} style={[styles.photo, { height: cardWidth * 1.08 }]} />
-          <View style={styles.caption}>
-            <Text variant="heading">{postcard.landmark.name}</Text>
+          <View style={[styles.caption, { paddingRight: stampSize * 0.55 }]}>
+            <Text variant="heading" numberOfLines={3}>{postcard.landmark.name}</Text>
             <Text variant="small" color={colors.muted}>{postcard.landmark.neighborhood} · {formatTimeOfDay(postcard.completedAt)}</Text>
             {postcard.verifiedBy && <Text variant="small" color={colors.muted}>{postcard.verifiedBy === "photo_ai" ? "Verified by GPS and your selfie" : "Verified by GPS only, the selfie wasn't checked"}</Text>}
           </View>
@@ -86,7 +86,7 @@ export function Verified({ result }: { result: Result }) {
         </View>
 
         <Animated.View style={[styles.below, { opacity: rise, transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }]}>
-          <Text variant="display" align="center">{headline}</Text>
+          <Text variant="display" align="center" numberOfLines={3} adjustsFontSizeToFit maxFontSizeMultiplier={1.2}>{headline}</Text>
           <Text variant="body" color={colors.inkSoft} align="center">
             {alone
               ? `${me?.completed ?? 1} ${me?.completed === 1 ? "stamp" : "stamps"} this week. Invite friends to turn it into a race for the pot.`
@@ -106,11 +106,11 @@ export function Verified({ result }: { result: Result }) {
               const mine = s.member.id === data.meId;
               return (
                 <View key={s.member.id} style={[styles.row, mine && styles.rowMine]}>
-                  <Text variant="title" color={mine ? colors.leaf : colors.muted} style={styles.rank}>{s.rank}</Text>
+                  <Text variant="title" color={mine ? colors.leaf : colors.muted} style={styles.rank} maxFontSizeMultiplier={1.15}>{s.rank}</Text>
                   <Avatar member={s.member} size={30} ring={mine ? colors.leafSoft : colors.card} />
-                  <Text variant="bodyStrong" style={styles.flex}>{mine ? "You" : s.member.name}</Text>
-                  {old !== s.rank && <Text variant="small" color={old > s.rank ? colors.leaf : colors.muted}>{old > s.rank ? `▲ ${old - s.rank}` : `▼ ${s.rank - old}`}</Text>}
-                  <Text variant="title">{s.completed}</Text>
+                  <Text variant="bodyStrong" style={styles.flex} numberOfLines={1}>{mine ? "You" : s.member.name}</Text>
+                  {old !== s.rank && <Text variant="small" numberOfLines={1} color={old > s.rank ? colors.leaf : colors.muted}>{old > s.rank ? `▲ ${old - s.rank}` : `▼ ${s.rank - old}`}</Text>}
+                  <Text variant="title" maxFontSizeMultiplier={1.15}>{s.completed}</Text>
                 </View>
               );
             })}
@@ -135,8 +135,8 @@ const styles = StyleSheet.create({
   board: { marginTop: space.sm, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.cardEdge, paddingVertical: space.xxs },
   row: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingHorizontal: space.md, minHeight: 48 },
   rowMine: { backgroundColor: colors.leafSoft },
-  rank: { width: 20 },
-  flex: { flex: 1 },
+  rank: { minWidth: 20 },
+  flex: { flex: 1, minWidth: 0 },
   invite: { marginHorizontal: -space.lg, marginTop: space.sm },
   cta: { marginTop: space.md },
 });

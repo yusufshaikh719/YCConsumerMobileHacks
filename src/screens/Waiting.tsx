@@ -36,9 +36,9 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.xs, paddingBottom: insets.bottom + space.xl }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel={`${data.group.name}, change group`} onPress={() => router.push("/onboarding")} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${data.group.name}, change group`} onPress={() => router.push("/onboarding")} hitSlop={8} style={styles.brand}>
             <Text variant="title">Ante</Text>
-            <Text variant="small" color={colors.muted}>{data.group.name} ›</Text>
+            <Text variant="small" color={colors.muted} numberOfLines={1}>{data.group.name} ›</Text>
           </Pressable>
           <View style={styles.actions}>
             <IconButton icon="albums-outline" label="Group feed" onPress={() => router.push("/feed")} />
@@ -90,13 +90,13 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
 
         <Pressable accessibilityRole="button" accessibilityLabel="Open this week's standings" onPress={() => router.push("/feed")} style={({ pressed }) => [styles.pot, pressed && styles.pressed]}>
           <View style={styles.potTop}>
-            <View>
+            <View style={styles.shrink}>
               <Text variant="label" color={colors.muted}>This week's pot</Text>
-              <Text variant="hero" style={styles.potAmount}>{money(data.potCents)}</Text>
+              <Text variant="hero" style={styles.potAmount} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.15}>{money(data.potCents)}</Text>
             </View>
             <View style={styles.rank}>
               <Text variant="label" color={colors.muted}>{alone ? "Players" : "You're"}</Text>
-              <Text variant="hero" color={!alone && me?.rank === 1 ? colors.leaf : colors.ink} style={styles.potAmount}>{alone ? "1" : me ? ordinal(me.rank) : "–"}</Text>
+              <Text variant="hero" color={!alone && me?.rank === 1 ? colors.leaf : colors.ink} style={styles.potAmount} numberOfLines={1} maxFontSizeMultiplier={1.15}>{alone ? "1" : me ? ordinal(me.rank) : "–"}</Text>
             </View>
           </View>
           <View style={styles.rule} />
@@ -119,8 +119,8 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
         )}
 
         <Pressable accessibilityRole="button" onPress={() => router.push("/passport")} style={({ pressed }) => [styles.passport, pressed && styles.pressed]}>
-          <Text variant="bodyStrong" color={colors.leaf}>Your passport</Text>
-          <Text variant="small" color={colors.muted}>{me?.completed ?? 0} stamps this week →</Text>
+          <Text variant="bodyStrong" color={colors.leaf} style={styles.fixed}>Your passport</Text>
+          <Text variant="small" color={colors.muted} style={styles.shrink} numberOfLines={1}>{me?.completed ?? 0} stamps this week →</Text>
         </Pressable>
       </ScrollView>
     </Paper>
@@ -128,7 +128,10 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: space.lg, paddingTop: space.xs },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.xs },
+  brand: { flex: 1, minWidth: 0 },
+  shrink: { flexShrink: 1, minWidth: 0 },
+  fixed: { flexShrink: 0 },
   actions: { flexDirection: "row", gap: space.xs },
   hero: { alignItems: "center", paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xl, gap: space.xs },
   state: { marginTop: space.sm },
@@ -139,7 +142,7 @@ const styles = StyleSheet.create({
   stack: { paddingHorizontal: space.lg, paddingVertical: space.sm, paddingRight: space.xl },
   empty: { marginHorizontal: space.lg, padding: space.lg, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed", borderColor: colors.rule },
   pot: { marginHorizontal: space.lg, marginTop: space.lg, padding: space.md, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.cardEdge },
-  potTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
+  potTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: space.sm },
   potAmount: { fontSize: 56, lineHeight: 58 },
   rank: { alignItems: "flex-end" },
   rule: { height: 1, backgroundColor: colors.cardEdge, marginVertical: space.sm },
@@ -147,6 +150,6 @@ const styles = StyleSheet.create({
   faces: { flexDirection: "row" },
   flex: { flex: 1 },
   invite: { marginTop: space.lg },
-  passport: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginHorizontal: space.lg, marginTop: space.sm, paddingHorizontal: space.md, minHeight: 52, borderRadius: radius.md },
+  passport: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: space.sm, marginHorizontal: space.lg, marginTop: space.sm, paddingHorizontal: space.md, minHeight: 52, borderRadius: radius.md },
   pressed: { opacity: 0.7 },
 });

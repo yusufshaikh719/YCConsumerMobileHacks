@@ -54,7 +54,7 @@ export function Ping({ timing, quest }: { timing: Timing; quest: Sidequest | nul
         </View>
         <View style={styles.center} accessibilityLiveRegion="polite" accessibilityLabel={`${seconds} seconds`}>
           {searching ? (
-            <Text variant="hero" color={colors.sprout} align="center">Finding your landmark…</Text>
+            <Text variant="hero" color={colors.sprout} align="center" maxFontSizeMultiplier={1.15}>Finding your landmark…</Text>
           ) : (
             <Animated.View style={{ transform: [{ scale: beat }] }}>
               <Text variant="scoreboard" color={urgent ? colors.sprout : colors.onMoss} style={styles.count} allowFontScaling={false}>
@@ -62,7 +62,7 @@ export function Ping({ timing, quest }: { timing: Timing; quest: Sidequest | nul
               </Text>
             </Animated.View>
           )}
-          <Text variant="display" color={colors.onMoss} style={styles.shoes}>Shoes on.</Text>
+          <Text variant="display" color={colors.onMoss} style={styles.shoes} maxFontSizeMultiplier={1.15}>Shoes on.</Text>
         </View>
         <Text variant="body" color={colors.onMossMuted} align="center">{searching ? "Looking for something worth a 10-minute walk." : "Your landmark drops at zero."}</Text>
       </Animated.View>

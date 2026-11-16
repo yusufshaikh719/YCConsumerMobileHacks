@@ -28,7 +28,7 @@ function Stepper({ label, value, onChange, min, max }: { label: string; value: n
   return (
     <View style={styles.stepper}>
       <Text variant="label" color={colors.muted}>{label}</Text>
-      <Text variant="hero" style={styles.time} adjustsFontSizeToFit numberOfLines={1}>{formatClock(value)}</Text>
+      <Text variant="hero" style={styles.time} adjustsFontSizeToFit numberOfLines={1} maxFontSizeMultiplier={1}>{formatClock(value)}</Text>
       <View style={styles.stepRow}>
         {[-STEP, STEP].map(delta => {
           const disabled = delta < 0 ? value <= min : value >= max;
@@ -172,8 +172,8 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.cardEdge, padding: space.lg, gap: space.md },
   pair: { flexDirection: "row", alignItems: "stretch" },
   divider: { width: 1, backgroundColor: colors.cardEdge, marginHorizontal: space.sm },
-  stepper: { flex: 1, alignItems: "center", gap: space.xxs },
-  time: { fontSize: 46, lineHeight: 50 },
+  stepper: { flex: 1, minWidth: 0, alignItems: "center", gap: space.xxs },
+  time: { fontSize: 42, lineHeight: 48 },
   stepRow: { flexDirection: "row", gap: space.xs, marginTop: space.xs },
   step: { width: touch.min, height: touch.min, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.rule },
   stepPressed: { backgroundColor: colors.leafSoft },

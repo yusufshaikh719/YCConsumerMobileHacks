@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { Linking, StyleSheet, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Rect } from "react-native-svg";
 import { Button } from "../components/Button";
@@ -35,7 +35,7 @@ export function Failed({ quest, reason }: { quest: Sidequest | null; reason: Fai
   return (
     <Paper style={{ paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.lg }}>
       <StatusBar style="dark" />
-      <View style={styles.center}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
         <View style={{ width: w, height: h }}>
           <Svg width={w} height={h}>
             <Rect x={2} y={2} width={w - 4} height={h - 4} rx={8} stroke={colors.rule} strokeWidth={2} strokeDasharray="6 8" fill={colors.card} fillOpacity={0.5} />
@@ -45,10 +45,10 @@ export function Failed({ quest, reason }: { quest: Sidequest | null; reason: Fai
           </View>
         </View>
         <Text variant="label" color={colors.muted} style={styles.label}>{c.label}</Text>
-        <Text variant="display" align="center">{c.title}</Text>
+        <Text variant="display" align="center" maxFontSizeMultiplier={1.2}>{c.title}</Text>
         <Text variant="body" color={colors.inkSoft} align="center" style={styles.body}>{c.body}</Text>
         {me && data.standings.length > 1 && <Text variant="small" color={colors.muted} align="center">Still {ordinal(me.rank)} this week with {me.completed} stamps.</Text>}
-      </View>
+      </ScrollView>
       <View style={styles.actions}>
         {canRetake && <Button label="Take another selfie" onPress={() => dispatch({ type: "RETAKE", now: Date.now() })} />}
         {reason === "no_location" && <Button label="Open Settings" onPress={() => void Linking.openSettings()} />}
@@ -59,9 +59,10 @@ export function Failed({ quest, reason }: { quest: Sidequest | null; reason: Fai
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: space.lg, gap: space.xs },
+  scroll: { flex: 1 },
+  center: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: space.lg, paddingBottom: space.lg, gap: space.xs },
   mark: { position: "absolute", top: 70, left: 50 },
   label: { marginTop: space.lg },
   body: { maxWidth: 320 },
-  actions: { paddingHorizontal: space.lg, gap: space.sm },
+  actions: { paddingHorizontal: space.lg, paddingTop: space.sm, gap: space.sm },
 });

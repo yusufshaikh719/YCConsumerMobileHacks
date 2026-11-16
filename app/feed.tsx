@@ -44,13 +44,13 @@ export default function Feed() {
             const mine = s.member.id === data.meId;
             return (
               <View key={s.member.id} style={styles.row}>
-                <Text variant="title" color={s.rank === 1 ? colors.leaf : colors.muted} style={styles.rank}>{s.rank}</Text>
+                <Text variant="title" color={s.rank === 1 ? colors.leaf : colors.muted} style={styles.rank} maxFontSizeMultiplier={1.15}>{s.rank}</Text>
                 <Avatar member={s.member} size={30} ring={colors.card} />
-                <Text variant={mine ? "bodyStrong" : "body"} style={styles.name}>{mine ? "You" : s.member.name}</Text>
+                <Text variant={mine ? "bodyStrong" : "body"} style={styles.name} numberOfLines={1}>{mine ? "You" : s.member.name}</Text>
                 <View style={styles.track}>
                   <View style={[styles.fill, { width: `${(s.completed / top) * 100}%`, backgroundColor: mine ? colors.leaf : colors.rule }]} />
                 </View>
-                <Text variant="title" style={styles.count}>{s.completed}</Text>
+                <Text variant="title" style={styles.count} maxFontSizeMultiplier={1.15}>{s.completed}</Text>
               </View>
             );
           })}
@@ -92,11 +92,11 @@ export default function Feed() {
 const styles = StyleSheet.create({
   board: { marginHorizontal: space.lg, marginTop: space.sm, paddingVertical: space.xs, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.cardEdge },
   row: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingHorizontal: space.md, minHeight: 46 },
-  rank: { width: 18 },
-  name: { width: 64 },
-  track: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.paper, overflow: "hidden" },
+  rank: { minWidth: 18 },
+  name: { flexShrink: 1, minWidth: 0, width: 120 },
+  track: { flex: 1, minWidth: 32, height: 6, borderRadius: 3, backgroundColor: colors.paper, overflow: "hidden" },
   fill: { height: 6, borderRadius: 3 },
-  count: { width: 18, textAlign: "right" },
+  count: { minWidth: 18, textAlign: "right" },
   invite: { marginTop: space.lg },
   empty: { marginHorizontal: space.lg, marginTop: space.lg, padding: space.lg, gap: 4, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed", borderColor: colors.rule },
   day: { paddingHorizontal: space.lg, marginTop: space.lg, marginBottom: space.sm },

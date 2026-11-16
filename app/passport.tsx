@@ -38,13 +38,13 @@ export default function Passport() {
             ))}
           </Svg>
           <View style={styles.identity}>
-            <View>
+            <View style={styles.holder}>
               <Text variant="label" color={colors.muted}>Holder</Text>
-              <Text variant="heading">{me?.fullName ?? "You"}</Text>
-              <Text variant="small" color={colors.muted}>{data.group.name}</Text>
+              <Text variant="heading" numberOfLines={2}>{me?.fullName ?? "You"}</Text>
+              <Text variant="small" color={colors.muted} numberOfLines={2}>{data.group.name}</Text>
             </View>
             <View style={styles.totals}>
-              <Text variant="hero" color={colors.leaf} style={styles.total}>{mine.length}</Text>
+              <Text variant="hero" color={colors.leaf} style={styles.total} maxFontSizeMultiplier={1.15}>{mine.length}</Text>
               <Text variant="label" color={colors.muted}>Stamps</Text>
             </View>
           </View>
@@ -83,7 +83,8 @@ export default function Passport() {
 
 const styles = StyleSheet.create({
   page: { margin: space.lg, marginTop: space.sm, padding: space.lg, borderRadius: radius.lg, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardEdge, overflow: "hidden", gap: space.md },
-  identity: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
+  identity: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: space.sm },
+  holder: { flex: 1, minWidth: 0 },
   totals: { alignItems: "flex-end" },
   total: { fontSize: 64, lineHeight: 64 },
   rule: { height: 1, backgroundColor: colors.cardEdge },
