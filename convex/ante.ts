@@ -8,6 +8,7 @@ import { joinPendingCheckout, uniqueInviteCode } from "./pots";
 import { haversineMeters } from "./sidequests";
 
 const DEVICE_ID = /^[A-Za-z0-9_-]{8,64}$/;
+const SELFIE_REJECT_CONFIDENCE = 0.5;
 
 async function userFor(ctx: QueryCtx, deviceId: string) {
   return await ctx.db.query("users").withIndex("by_device", q => q.eq("deviceId", deviceId)).unique();
@@ -158,7 +159,7 @@ export const submitArrival = action({
     const imageUrl = photoStorageId ? await ctx.runQuery(internal.ante.getPhotoUrl, { storageId: photoStorageId }) : null;
     let live: LiveResult | null = null;
     if (imageUrl && (process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)) {
-      const prompt = `This is an arrival selfie for a walking sidequest to ${check.destName}. About the place: ${check.destSummary || "no description"}. GPS puts the player ${check.distanceMeters}m from it (target radius ${check.radiusMeters}m). The player's face may fill much of the frame. Set landmarkPassed to true when the background plausibly shows ${check.destName} or its immediate outdoor surroundings, and false when it clearly shows somewhere unrelated, such as an indoor room. Set visualSpoofDetected to true only for clear signs of a fake: a photo of a screen or print, or an obviously edited image. Return only JSON with landmarkPassed (boolean), visualSpoofDetected (boolean), visualSpoofReasons (array of concise strings), confidence (0 to 1), and roastMessage (one short playful sentence about the photo).`;
+      const prompt = `This is an arrival selfie for a walking sidequest to ${check.destName}. About the place: ${check.destSummary || "no description"}. GPS puts the player ${check.distanceMeters}m from it (target radius ${check.radiusMeters}m). The player's face may fill much of the frame, and they may be outside or inside the building. Set landmarkPassed to true only when a person is in the photo and some identifiable part of ${check.destName} is visible behind them: its name, signage or logo, its distinctive facade or entrance, or a recognizable interior feature or architecture tied to the place. A clearly readable sign or logo of ${check.destName} is enough on its own. Set landmarkPassed to false when there is no person, when the background is plainly a different place, such as a beach, a bedroom or a different famous landmark, or when nothing in the background ties it to ${check.destName}, such as a plain wall, a generic hallway, a ceiling, or anything too ambiguous to recognize. Set visualSpoofDetected to true only when the image is a screenshot, a photo of a screen or print, an obviously edited image, or blank or almost entirely black. When either check fails, put one short, friendly reason addressed to the player in visualSpoofReasons, such as "Get part of ${check.destName} in the shot, like the sign or entrance.", "No one's in the shot" or "That looks like a beach, not ${check.destName}". Set confidence (0 to 1) to how sure you are of the problem you flagged, or of the pass when nothing is wrong. Return only JSON with landmarkPassed (boolean), visualSpoofDetected (boolean), visualSpoofReasons (array of short strings), confidence (0 to 1), and roastMessage (one short playful sentence about the photo).`;
       const signal = AbortSignal.timeout(12_000);
       try {
         live = await Promise.race([
@@ -170,13 +171,14 @@ export const submitArrival = action({
         live = null;
       }
     }
-    if (live && (live.visualSpoofDetected || !live.landmarkPassed)) {
-      return { ok: false, reason: "photo_rejected", note: live.visualSpoofReasons.join(", ") || live.roastMessage.trim().slice(0, 200) };
+    const flagged = live !== null && (live.visualSpoofDetected || !live.landmarkPassed);
+    if (live && flagged && live.confidence >= SELFIE_REJECT_CONFIDENCE) {
+      return { ok: false, reason: "photo_rejected", note: (live.visualSpoofReasons.find(reason => reason.trim()) ?? `Get part of ${check.destName} in the shot, like the sign or entrance.`).trim().slice(0, 120) };
     }
     const note = live?.roastMessage.trim().slice(0, 200);
     const stampId = await ctx.runMutation(internal.ante.recordArrival, {
       userId: check.userId, sidequestId: position.sidequestId, distanceMeters: check.distanceMeters, ...(photoStorageId ? { photoStorageId } : {}),
-      verification: live ? { mode: "photo_ai", confidence: Math.max(0, Math.min(1, live.confidence)), ...(note ? { note } : {}) } : { mode: "gps_only" },
+      verification: live ? { mode: "photo_ai", confidence: Math.max(0, Math.min(1, flagged ? 1 - live.confidence : live.confidence)), ...(note ? { note } : {}) } : { mode: "gps_only" },
     });
     return { ok: true, stampId, verifiedBy: live ? "photo_ai" : "gps_only", ...(note ? { note } : {}) };
   },
