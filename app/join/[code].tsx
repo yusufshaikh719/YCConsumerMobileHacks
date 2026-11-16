@@ -30,7 +30,7 @@ export default function Join() {
             {own
               ? `This is the link you send. Everyone who joins puts ${money(data.stakeCents)} into the weekly pot.`
               : invite
-                ? `${money(data.stakeCents)} into the weekly pot, one surprise sidequest a day, most stamps by Sunday takes it. Group sync isn't live yet, so friends' stamps show up here once it is.`
+                ? `${money(data.stakeCents)} into the weekly pot, one surprise sidequest a day, most stamps by Sunday takes it.${data.backend === "convex" ? "" : " Offline mode: friends' stamps won't show on this phone."}`
                 : "This link doesn't carry a valid invite code. Ask your friend to send it again."}
           </Text>
         </View>

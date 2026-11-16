@@ -8,6 +8,7 @@ import { IconButton } from "../components/IconButton";
 import { InviteCard } from "../components/InviteCard";
 import { Paper } from "../components/Paper";
 import { Postcard } from "../components/Postcard";
+import { PotStatus } from "../components/PotStatus";
 import { money, ordinal } from "../lib/money";
 import { formatTimeOfDay, isInWindows, isSameDay, nextWindowStart, weekdayShort } from "../lib/time";
 import { useNow } from "../lib/useNow";
@@ -98,6 +99,8 @@ export function Waiting({ preview }: { preview?: "open" | "closed" }) {
             </Text>
           </View>
         </Pressable>
+
+        {data.funding.myStake === "unpaid" && <PotStatus data={data} />}
 
         {alone && (
           <View style={styles.invite}>

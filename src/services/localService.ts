@@ -26,7 +26,7 @@ type Deps = {
 
 const emptyReactions = (): Record<Reaction, string[]> => ({ "🔥": [], "👏": [], "😂": [], "🫡": [] });
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join("") || "ME";
+export const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join("") || "ME";
 
 export function weekBounds(now: number) {
   const end = new Date(now);
@@ -62,6 +62,8 @@ export function createLocalService({ storage, discover = origin => discoverLandm
       .map(({ photoUri, ...p }) => ({ ...p, photo: photoUri ? { uri: photoUri } : null }));
     return {
       meId: ME_ID,
+      backend: "local",
+      funding: { payments: "unavailable", myStake: null, paidCount: 0, lastPayout: null },
       loaded,
       onboarded: saved.onboarded,
       group: {
@@ -191,6 +193,9 @@ export function createLocalService({ storage, discover = origin => discoverLandm
         }),
       };
       await persist();
+    },
+    async buyIn() {
+      return { url: null, mode: "fallback" };
     },
   };
 }

@@ -6,13 +6,21 @@ import { DEFAULT_STAKE_CENTS, habitCategory, nextCutoff, persona, transferMode, 
 const inviteUrl = (code: string) => `https://ante.app/join/${code}`;
 const normalizeHandle = (handle: string) => handle.trim().replace(/^@/, "").toLowerCase();
 
-async function joinPendingCheckout(ctx: MutationCtx, potId: Id<"pots">, userId: Id<"users">) {
+export async function joinPendingCheckout(ctx: MutationCtx, potId: Id<"pots">, userId: Id<"users">) {
   const pot = await ctx.db.get(potId);
   if (!pot || (pot.status !== "open" && pot.status !== "active") || pot.currentDayIndex !== 1 || Date.now() >= pot.nextDeadlineAt) throw new Error("Pot is not accepting members");
   if (!await ctx.db.get(userId)) throw new Error("User not found");
   const existing = await ctx.db.query("memberships").withIndex("by_pot_user", q => q.eq("potId", potId).eq("userId", userId)).unique();
   if (existing) return existing._id;
   return await ctx.db.insert("memberships", { potId, userId, stakeStatus: "pending_checkout", streakCount: 0, completedDays: [], missedDays: [], joinedAt: Date.now() });
+}
+
+export async function uniqueInviteCode(ctx: MutationCtx) {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = Math.floor(Math.random() * 36 ** 6).toString(36).toUpperCase().padStart(6, "0");
+    if (!await ctx.db.query("pots").withIndex("by_invite_code", q => q.eq("inviteCode", candidate)).first()) return candidate;
+  }
+  throw new Error("Could not generate a unique invite code");
 }
 
 export const createPot = mutation({
@@ -31,15 +39,7 @@ export const createPot = mutation({
       const existing = await ctx.db.query("users").withIndex("by_handle", q => q.eq("handle", handle)).unique();
       userIds.add(existing?._id ?? await ctx.db.insert("users", { name: handle, handle, simulatedWalletBalanceCents: 0, createdAt: now }));
     }
-    let inviteCode: string | undefined;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const candidate = Math.floor(Math.random() * 36 ** 6).toString(36).toUpperCase().padStart(6, "0");
-      if (!await ctx.db.query("pots").withIndex("by_invite_code", q => q.eq("inviteCode", candidate)).first()) {
-        inviteCode = candidate;
-        break;
-      }
-    }
-    if (!inviteCode) throw new Error("Could not generate a unique invite code");
+    const inviteCode = await uniqueInviteCode(ctx);
     const potId = await ctx.db.insert("pots", { title: args.title.trim(), habitCategory: args.habitCategory, habitPrompt: args.habitPrompt.trim(), createdByUserId: args.createdByUserId, stakeCents: stake, dailyCutoffHourUtc: hour, roastPersona: args.roastPersona ?? "drill_sergeant", challengeMode: args.challengeMode ?? "sidequest", inviteCode, invitedHandles: handles, status: "open", currentDayIndex: 1, nextDeadlineAt: nextCutoff(now, hour), potTotalCents: 0, forfeitedCents: 0, createdAt: now });
     for (const userId of userIds) await joinPendingCheckout(ctx, potId, userId);
     return potId;
@@ -102,7 +102,7 @@ export const getPotDashboard = query({
 });
 
 export const confirmWhopStake = internalMutation({
-  args: { potId: v.id("pots"), userId: v.id("users"), whopPaymentId: v.string(), eventId: v.string(), mode: v.union(v.literal("live"), v.literal("simulated")), whopCheckoutId: v.optional(v.string()) },
+  args: { potId: v.id("pots"), userId: v.id("users"), whopPaymentId: v.string(), eventId: v.string(), mode: v.union(v.literal("live"), v.literal("simulated")), whopCheckoutId: v.optional(v.string()), whopUserId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const priorEvent = await ctx.db.query("webhookEvents").withIndex("by_event", q => q.eq("provider", "whop").eq("eventId", args.eventId)).unique();
     if (priorEvent) return false;
@@ -116,6 +116,8 @@ export const confirmWhopStake = internalMutation({
     const member = await ctx.db.query("memberships").withIndex("by_pot_user", q => q.eq("potId", args.potId).eq("userId", args.userId)).unique();
     if (!pot || !member || member.stakeStatus !== "pending_checkout" || !["open", "active"].includes(pot.status) || pot.currentDayIndex !== 1 || Date.now() >= pot.nextDeadlineAt) throw new Error("Membership is not awaiting a valid checkout");
     await ctx.db.patch(member._id, { stakeStatus: "funded", whopPaymentId: args.whopPaymentId, whopCheckoutId: args.whopCheckoutId });
+    const payer = await ctx.db.get(args.userId);
+    if (args.whopUserId && payer && (!payer.whopUserId || payer.whopUserId.startsWith("demo_whop_"))) await ctx.db.patch(payer._id, { whopUserId: args.whopUserId });
     await ctx.db.patch(pot._id, { status: "active", potTotalCents: pot.potTotalCents + pot.stakeCents });
     await ctx.db.insert("webhookEvents", { provider: "whop", eventId: args.eventId, eventType: "payment.succeeded", payloadSummary: `pot=${args.potId} user=${args.userId} payment=${args.whopPaymentId}`, processedAt: Date.now(), mode: args.mode });
     return true;

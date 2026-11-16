@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as ante from "../ante.js";
 import type * as availability from "../availability.js";
 import type * as challenges from "../challenges.js";
 import type * as crons from "../crons.js";
@@ -31,6 +32,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  ante: typeof ante;
   availability: typeof availability;
   challenges: typeof challenges;
   crons: typeof crons;

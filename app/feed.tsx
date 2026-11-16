@@ -6,6 +6,7 @@ import { IconButton } from "../src/components/IconButton";
 import { InviteCard } from "../src/components/InviteCard";
 import { Paper } from "../src/components/Paper";
 import { Postcard } from "../src/components/Postcard";
+import { PotStatus } from "../src/components/PotStatus";
 import { Reactions } from "../src/components/Reactions";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { shareInvite } from "../src/lib/invite";
@@ -54,6 +55,8 @@ export default function Feed() {
             );
           })}
         </View>
+
+        <PotStatus data={data} />
 
         {alone && (
           <View style={styles.invite}>

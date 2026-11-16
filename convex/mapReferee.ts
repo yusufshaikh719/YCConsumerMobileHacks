@@ -96,7 +96,7 @@ export const submitWalkTrace = mutation({
   },
 });
 
-type LiveResult = { landmarkPassed: boolean; visualSpoofDetected: boolean; visualSpoofReasons: string[]; confidence: number; roastMessage: string };
+export type LiveResult = { landmarkPassed: boolean; visualSpoofDetected: boolean; visualSpoofReasons: string[]; confidence: number; roastMessage: string };
 
 export const getWalkContext = internalQuery({
   args: { walkSubmissionId: v.id("walkSubmissions") },
@@ -123,6 +123,10 @@ async function evaluatePhoto(context: { walk: Doc<"walkSubmissions">; quest: Doc
   const { walk, quest, imageUrl } = context;
   const gps = assess(walk.points, quest, walk.submittedAt, walk.arrivalCapturedAt);
   const prompt = `Verify the arrival photo for a walking sidequest to ${quest.destName}. Destination description: ${quest.destSummary}. Mission: ${quest.instruction}. GPS distance to destination: ${Math.round(gps.minDistanceToDestMeters)}m, target radius: ${quest.targetRadiusMeters}m; GPS flags: ${gps.spoofSignals.join(", ") || "none"}. Decide whether the photo credibly shows the destination and whether there are signs of photo spoofing. Return only JSON with landmarkPassed (boolean), visualSpoofDetected (boolean), visualSpoofReasons (array of concise strings), confidence (0 to 1), and roastMessage (short playful string). ${ROAST_PERSONAS[walk.roastPersona].systemInstruction}`;
+  return await assessLandmarkPhoto(imageUrl, prompt, signal);
+}
+
+export async function assessLandmarkPhoto(imageUrl: string, prompt: string, signal: AbortSignal): Promise<LiveResult> {
   if (process.env.GEMINI_API_KEY) {
     const image = await fetch(imageUrl, { signal });
     if (!image.ok) throw new Error("Photo fetch failed");

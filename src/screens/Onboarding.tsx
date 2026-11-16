@@ -30,12 +30,18 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
   const [error, setError] = useState<string | null>(null);
   const [windows, setWindows] = useState<FreeWindow[]>(data.windows);
   const first = name.trim().split(/\s+/)[0];
+  const synced = data.backend === "convex";
 
   const toWindows = async () => {
-    if (name.trim()) await ante.setName(name);
-    if (mode === "create") await ante.createGroup(groupName);
-    if (mode === "join" && !(await ante.joinGroup(code))) {
-      setError("That doesn't look like an invite code. It's the 6 letters and numbers at the end of the link.");
+    try {
+      if (name.trim()) await ante.setName(name);
+      if (mode === "create") await ante.createGroup(groupName);
+      if (mode === "join" && !(await ante.joinGroup(code))) {
+        setError(synced ? "We couldn't find a group with that code. It's the 6 letters and numbers at the end of the link." : "That doesn't look like an invite code. It's the 6 letters and numbers at the end of the link.");
+        return;
+      }
+    } catch {
+      setError("Couldn't reach the group server. Check your connection and try again.");
       return;
     }
     haptic.select();
@@ -109,10 +115,11 @@ export function Onboarding({ inviteCode, onDone }: { inviteCode?: string; onDone
                 <View style={styles.field}>
                   <Text variant="label" color={colors.muted}>Invite code</Text>
                   <TextInput accessibilityLabel="Invite code" value={code} onChangeText={value => { setCode(value); setError(null); }} placeholder="ante://join/ABC123" placeholderTextColor={colors.muted} autoCapitalize="characters" autoCorrect={false} style={styles.input} />
-                  {error ? <Text variant="small" color={colors.leaf}>{error}</Text> : <Text variant="small" color={colors.muted}>Group sync isn't live yet. You'll share their code and pot rules, but friends' stamps only show here once it is.</Text>}
+                  {!error && <Text variant="small" color={colors.muted}>{synced ? "You'll join their group on every phone and see each other's stamps live." : "Offline mode: you'll share their code and pot rules, but friends' stamps won't show on this phone."}</Text>}
                 </View>
               )}
 
+              {error && mode !== "keep" && <Text variant="small" color={colors.warn}>{error}</Text>}
               <Button label="Next: your windows" onPress={() => void toWindows()} />
             </>
           ) : (

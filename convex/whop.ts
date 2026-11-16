@@ -84,7 +84,7 @@ export const createPotCheckout = action({
       const result = await whopPost("checkout_configurations", {
         account_id: companyId, mode: "payment",
         variant: { billing_type: "one_time", currency: "usd", initial_price: pot.stakeCents / 100, ...(productId ? { product_id: productId } : {}) },
-        metadata: { potId, userId, potTitle: pot.title, habitCategory: pot.habitCategory },
+        metadata: { potId, userId, potTitle: pot.title, habitCategory: pot.habitCategory, purpose: "pot" },
       }, apiKey);
       if (typeof result.id !== "string" || !result.id) throw new Error("Missing checkout ID");
       return { checkoutId: result.id, checkoutUrl: typeof result.purchase_url === "string" ? result.purchase_url : null, mode: "live" };

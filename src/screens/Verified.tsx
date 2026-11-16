@@ -63,6 +63,7 @@ export function Verified({ result }: { result: Result }) {
           <View style={styles.caption}>
             <Text variant="heading">{postcard.landmark.name}</Text>
             <Text variant="small" color={colors.muted}>{postcard.landmark.neighborhood} · {formatTimeOfDay(postcard.completedAt)}</Text>
+            {postcard.verifiedBy && <Text variant="small" color={colors.muted}>{postcard.verifiedBy === "photo_ai" ? "Verified by GPS and an AI check of your selfie" : "Verified by GPS only, the selfie wasn't checked"}</Text>}
           </View>
           <Perforation color={colors.paper} edge="top" count={22} />
           <Perforation color={colors.paper} edge="bottom" count={22} />

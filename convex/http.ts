@@ -1,7 +1,7 @@
 import { httpRouter } from "convex/server";
 import { unwrapWebhook } from "@whop/sdk/helpers";
 import { internal } from "./_generated/api";
-import { httpAction } from "./_generated/server";
+import { httpAction, type ActionCtx } from "./_generated/server";
 
 const http = httpRouter();
 
@@ -23,8 +23,11 @@ http.route({
     if (event.type !== "payment.succeeded") return json({ received: true, ignored: true });
     const data = object(event.data);
     const metadata = object(data?.metadata);
-    if (metadata?.purpose !== "premium") return json({ received: true, ignored: true });
     const eventId = request.headers.get("webhook-id");
+    if (metadata?.purpose === "pot" || object(object(data?.checkout_configuration)?.metadata)?.purpose === "pot") {
+      return nonemptyString(eventId) ? await creditPot(ctx, event, eventId) : json({ error: "Missing webhook id" }, 400);
+    }
+    if (metadata?.purpose !== "premium") return json({ received: true, ignored: true });
     const total = usdCents(data?.total);
     const tax = data?.tax_amount == null ? 0 : usdCents(data.tax_amount);
     if (!nonemptyString(eventId) || !nonemptyString(data?.id) || !nonemptyString(data?.checkout_configuration_id) ||
@@ -39,6 +42,50 @@ http.route({
     return json({ received: true, premium: true, duplicate: result === "duplicate" });
   }),
 });
+
+async function creditPot(ctx: ActionCtx, event: Record<string, unknown>, eventId: string): Promise<Response> {
+  const data = object(event.data);
+  const checkout = object(data?.checkout_configuration);
+  const metadata = object(data?.metadata);
+  const checkoutMetadata = object(checkout?.metadata);
+  const potId = metadata?.potId ?? checkoutMetadata?.potId;
+  const userId = metadata?.userId ?? checkoutMetadata?.userId;
+  const whopPaymentId = data?.id;
+  const whopCheckoutId = data?.checkout_configuration_id ?? checkout?.id;
+  const whopUserId = object(data?.user)?.id;
+  if (!nonemptyString(potId) || !nonemptyString(userId) || !nonemptyString(whopPaymentId) ||
+      (whopCheckoutId != null && !nonemptyString(whopCheckoutId))) {
+    return json({ error: "Invalid payment data" }, 400);
+  }
+
+  const context = await ctx.runQuery(internal.whop.getWebhookContext, { potId, userId });
+  if (!context) return json({ error: "Invalid payment metadata" }, 400);
+  const totalCents = usdCents(data?.total);
+  const taxCents = data?.tax_amount == null ? 0 : usdCents(data.tax_amount);
+  const companyId = process.env.WHOP_COMPANY_ID;
+  const accountIds = [event.account_id, event.company_id, data?.account_id, data?.company_id].filter(value => value != null);
+  if (companyId && (accountIds.length === 0 || accountIds.some(value => value !== companyId))) {
+    return json({ error: "Payment account does not match" }, 400);
+  }
+  if (data?.currency !== "usd" || totalCents === null || taxCents === null || totalCents - taxCents < context.pot.stakeCents) {
+    return json({ error: "Payment does not cover the USD stake" }, 400);
+  }
+  const funded = await ctx.runMutation(internal.pots.confirmWhopStake, {
+    potId: context.potId,
+    userId: context.userId,
+    whopPaymentId,
+    eventId,
+    mode: "live",
+    ...(typeof whopCheckoutId === "string" ? { whopCheckoutId } : {}),
+    ...(nonemptyString(whopUserId) ? { whopUserId } : {}),
+  });
+  if (!funded) return json({ received: true, duplicate: true });
+  await ctx.scheduler.runAfter(0, internal.whop.postChatAnnouncement, {
+    potId: context.potId,
+    message: `A player just joined the pot with a $${(context.pot.stakeCents / 100).toFixed(2)} buy-in!`,
+  });
+  return json({ received: true, funded: true });
+}
 
 function json(body: object, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -129,45 +176,7 @@ http.route({
       return json({ received: true, ignored: true, type: event.type });
     }
 
-    const data = object(event.data);
-    const checkout = object(data?.checkout_configuration);
-    const metadata = object(data?.metadata);
-    const checkoutMetadata = object(checkout?.metadata);
-    const potId = metadata?.potId ?? checkoutMetadata?.potId;
-    const userId = metadata?.userId ?? checkoutMetadata?.userId;
-    const whopPaymentId = data?.id;
-    const whopCheckoutId = data?.checkout_configuration_id ?? checkout?.id;
-    if (!nonemptyString(potId) || !nonemptyString(userId) || !nonemptyString(whopPaymentId) ||
-        (whopCheckoutId != null && !nonemptyString(whopCheckoutId))) {
-      return json({ error: "Invalid payment data" }, 400);
-    }
-
-    const context = await ctx.runQuery(internal.whop.getWebhookContext, { potId, userId });
-    if (!context) return json({ error: "Invalid payment metadata" }, 400);
-    const totalCents = usdCents(data?.total);
-    const taxCents = data?.tax_amount == null ? 0 : usdCents(data.tax_amount);
-    const companyId = process.env.WHOP_COMPANY_ID;
-    const accountIds = [event.account_id, event.company_id, data?.account_id, data?.company_id].filter(value => value != null);
-    if (companyId && (accountIds.length === 0 || accountIds.some(value => value !== companyId))) {
-      return json({ error: "Payment account does not match" }, 400);
-    }
-    if (data?.currency !== "usd" || totalCents === null || taxCents === null || totalCents - taxCents < context.pot.stakeCents) {
-      return json({ error: "Payment does not cover the USD stake" }, 400);
-    }
-    const funded = await ctx.runMutation(internal.pots.confirmWhopStake, {
-      potId: context.potId,
-      userId: context.userId,
-      whopPaymentId,
-      eventId: id,
-      mode: "live",
-      ...(typeof whopCheckoutId === "string" ? { whopCheckoutId } : {}),
-    });
-    if (!funded) return json({ received: true, duplicate: true });
-    await ctx.scheduler.runAfter(0, internal.whop.postChatAnnouncement, {
-      potId: context.potId,
-      message: `A player just joined the pot with a $${(context.pot.stakeCents / 100).toFixed(2)} buy-in!`,
-    });
-    return json({ received: true, funded: true });
+    return await creditPot(ctx, event, id);
   }),
 });
 
