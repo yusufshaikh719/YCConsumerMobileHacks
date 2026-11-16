@@ -166,28 +166,37 @@ describe("selfie referee", () => {
     expect((await t.query(api.ante.getGroup, { deviceId: "device-aahil-1", potId }))!.stamps).toEqual([]);
   });
 
-  it("tells the model to pass ambiguous indoor backgrounds and stamps a plain-wall selfie", async () => {
+  it("tells the model a recognizable part of the landmark is required and stamps a selfie with its sign", async () => {
     const t = convexTest(schema, modules);
     const { potId } = await group(t);
-    const fetchMock = openai({ landmarkPassed: true, visualSpoofDetected: false, roastMessage: "Riveting wall, great face." });
+    const fetchMock = openai({ landmarkPassed: true, visualSpoofDetected: false, roastMessage: "Sign spotted, smile approved." });
     const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
     expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toMatchObject({ ok: true, verifiedBy: "photo_ai" });
     const prompt: string = JSON.parse(fetchMock.mock.calls[0][1]!.body as string).messages[0].content[0].text;
-    expect(prompt).toContain("A plain wall, a lobby, a hallway, a door");
-    expect(prompt).toContain("only when there is no person in the photo, or the background is plainly a different place");
+    expect(prompt).toContain("some identifiable part of Old Mill Fountain is visible behind them");
+    expect(prompt).toContain("such as a plain wall, a generic hallway, a ceiling");
     expect(prompt).toContain("blank or almost entirely black");
   });
 
-  it("stamps a selfie the model only doubts with low confidence", async () => {
+  it("stamps a recognizable landmark the model only doubts with low confidence", async () => {
     const t = convexTest(schema, modules);
     const { potId } = await group(t);
-    openai({ landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: ["Hard to tell where this is"], confidence: 0.5 });
+    openai({ landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: ["Slightly blurry"], confidence: 0.3 });
     const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
     expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toMatchObject({ ok: true, verifiedBy: "photo_ai" });
     expect((await t.query(api.ante.getGroup, { deviceId: "device-aahil-1", potId }))!.stamps).toHaveLength(1);
   });
 
+  it("falls back to a friendly hint when the model rejects without a reason", async () => {
+    const t = convexTest(schema, modules);
+    const { potId } = await group(t);
+    openai({ landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: [], confidence: 0.8 });
+    const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
+    expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toEqual({ ok: false, reason: "photo_rejected", note: "Get part of Old Mill Fountain in the shot, like the sign or entrance." });
+  });
+
   it.each([
+    ["a plain wall with nothing tying it to the landmark", { landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: ["Get part of Old Mill Fountain in the shot, like the sign or entrance."], confidence: 0.8 }, "Get part of Old Mill Fountain in the shot, like the sign or entrance."],
     ["a clearly different location", { landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: ["That looks like a beach, not Old Mill Fountain"], confidence: 0.92 }, "That looks like a beach, not Old Mill Fountain"],
     ["no person in the shot", { landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: ["No one's in the shot"], confidence: 0.9 }, "No one's in the shot"],
     ["a blank or black photo", { landmarkPassed: true, visualSpoofDetected: true, visualSpoofReasons: ["That photo is completely black"], confidence: 0.97 }, "That photo is completely black"],
