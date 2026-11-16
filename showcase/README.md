@@ -1,16 +1,23 @@
 # Ante showcase deck
 
-A standalone, full-screen slideshow pitching Ante / Habit Pot to the YC Consumer Mobile Hackathon judges. Plain HTML, CSS and JS with no build step and no dependency on the app.
+A 9-slide deck for the YC Consumer Mobile Hackathon. Open `index.html` in any browser. It needs no build step and no network: the fonts and app screens are in this folder.
 
-Open `showcase/index.html` in a browser. Fonts ship locally in `fonts/`, so it works offline.
-
-| Action | Keys and gestures |
+| Key | Action |
 | --- | --- |
-| Next | Right, Down, Space, Enter, Page Down, click or tap, swipe left |
-| Previous | Left, Up, Page Up, Backspace, swipe right |
-| First / last | Home / End |
-| Fullscreen | F |
+| → / Space / click / swipe left | Next slide |
+| ← / swipe right | Previous slide |
+| Home / End | First / last slide |
+| F | Fullscreen |
+| N | Speaker notes |
 
-Each slide has its own URL hash (`#1` to `#12`). The 1920×1080 stage scales to any window and letterboxes on 4:3 projectors. Motion turns off under `prefers-reduced-motion`.
+You can link to a slide with `#n`, for example `index.html#5`.
 
-Barlow Condensed and Inter are licensed under the SIL Open Font License 1.1 (see `fonts/OFL-*.txt`).
+The deck uses the app's own theme: paper and moss colors from `src/theme/tokens.ts`, Bebas Neue and Inter, and the postcard and stamp motifs. Every number on a slide has its source on the same slide.
+
+## Screens
+
+`screens/*.jpg` are captures of the real app on Expo web. To re-shoot them after the app changes, run `capture/run.sh` (see [capture/README.md](capture/README.md)).
+
+## Fonts
+
+Bebas Neue (Dhitiya Rahman) and Inter (Rasmus Andersson), both under the SIL Open Font License. The license texts are in `fonts/`.

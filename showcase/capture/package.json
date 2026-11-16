@@ -1,0 +1,11 @@
+{
+  "name": "ante-showcase-capture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "./run.sh"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}
