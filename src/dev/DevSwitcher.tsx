@@ -14,7 +14,7 @@ const TARGETS: { target: DevTarget; label: string; hint: string }[] = [
   { target: "ping", label: "Ping", hint: "60s countdown" },
   { target: "ping-notification", label: "Real ping", hint: "Notification in 10s" },
   { target: "live", label: "Quest live", hint: "Compass + timer" },
-  { target: "arrived", label: "Arrived", hint: "Selfie camera" },
+  { target: "arrived", label: "Arrived", hint: "Selfie at YC HQ entrance" },
   { target: "verifying", label: "Verifying", hint: "Stamp pending" },
   { target: "verified", label: "Verified", hint: "Postcard + stamp" },
   { target: "failed", label: "Time's up", hint: "Window closed" },

@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Linking, Platform } from "react-native";
-import { devQuest } from "../dev/devQuest";
+import { devPosition, devQuest } from "../dev/devQuest";
 import { devToolsEnabled } from "../dev/enabled";
 import { arrivedAt } from "../lib/geofence";
 import { cancelPing, enableNotifications, notificationsGranted, onPingNotification, schedulePing } from "../lib/notifications";
@@ -133,7 +133,7 @@ export function AnteProvider({ children }: { children: ReactNode }) {
     if (phase.name !== "verifying") return;
     let cancelled = false;
     void (async () => {
-      const located = positionRef.current ?? (await getCurrentFix().then(r => ("fix" in r ? r.fix : null)));
+      const located = (phase.photoUri ? devPosition(phase.quest) : null) ?? positionRef.current ?? (await getCurrentFix().then(r => ("fix" in r ? r.fix : null)));
       const result = located ? await ante.verifyArrival(phase.quest, phase.photoUri, located) : ({ ok: false, reason: "not_verified" } as const);
       if (!cancelled) dispatch(result.ok ? { type: "VERIFIED", result } : { type: "REJECTED" });
     })();
