@@ -16,22 +16,22 @@ async function snapshot(funding: Partial<Funding>, backend: AnteSnapshot["backen
 }
 
 describe("pot status", () => {
-  it("labels the Whop sandbox and opens the sandbox checkout on buy-in", async () => {
+  it("labels Whop and opens the checkout on buy-in", async () => {
     const buyIn = jest.fn(async (): Promise<BuyIn> => ({ url: "https://sandbox.whop.com/checkout/ch_1/", mode: "live" }));
     holder().current = { buyIn };
     const open = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
     await render(<PotStatus data={await snapshot({})} />);
-    expect(screen.getByText("Whop sandbox · test money")).toBeTruthy();
-    await fireEvent.press(screen.getByText("Buy in $20 (sandbox)"));
+    expect(screen.getByText("Whop")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Buy in $20"));
     expect(buyIn).toHaveBeenCalled();
     expect(open).toHaveBeenCalledWith("https://sandbox.whop.com/checkout/ch_1/");
-    expect(screen.getByText(/Finish the test payment in Whop sandbox/)).toBeTruthy();
+    expect(screen.getByText(/Finish the payment in Whop/)).toBeTruthy();
   });
 
   it("says honestly when checkout falls back and nothing was charged", async () => {
     holder().current = { buyIn: async () => ({ url: null, mode: "fallback" }) };
     await render(<PotStatus data={await snapshot({})} />);
-    await fireEvent.press(screen.getByText("Buy in $20 (sandbox)"));
+    await fireEvent.press(screen.getByText("Buy in $20"));
     expect(screen.getByText(/nothing was charged/)).toBeTruthy();
   });
 

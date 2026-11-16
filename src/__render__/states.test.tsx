@@ -193,8 +193,10 @@ describe("onboarding gate", () => {
     expect(screen.queryByText("Could be any minute.")).toBeNull();
     await fireEvent.changeText(screen.getByLabelText("Your name"), "Maya Lin");
     await fireEvent.changeText(screen.getByLabelText("Group name"), "Lunch Walkers");
-    await fireEvent.press(screen.getByText("Next: your windows"));
+    await fireEvent.press(screen.getByText("Next: fund the pot"));
     await settle();
+    expect(screen.getByText("Fund the pot.")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Next: your windows"));
     expect(screen.getByText("When are you free?")).toBeTruthy();
     await fireEvent.press(screen.getByText("Add another window"));
     await fireEvent.press(screen.getByText("Start playing"));
@@ -209,11 +211,11 @@ describe("onboarding gate", () => {
     await renderAt(undefined, { onboarded: false });
     await fireEvent.press(screen.getByText("Join with a code"));
     await fireEvent.changeText(screen.getByLabelText("Invite code"), "??");
-    await fireEvent.press(screen.getByText("Next: your windows"));
+    await fireEvent.press(screen.getByText("Next: fund the pot"));
     await settle();
     expect(screen.getByText(/doesn't look like an invite code/)).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText("Invite code"), "ante://join/ab12cd");
-    await fireEvent.press(screen.getByText("Next: your windows"));
+    await fireEvent.press(screen.getByText("Next: fund the pot"));
     await settle();
     expect(screen.getByText(/^We couldn't find that group/)).toBeTruthy();
     expect(screen.queryByText("When are you free?")).toBeNull();
