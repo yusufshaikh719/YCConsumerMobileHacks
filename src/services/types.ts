@@ -58,6 +58,8 @@ export type Funding = {
   lastPayout: { winners: string[]; amountCents: number; transfer: "whop" | "pending" | "fallback"; at: number } | null;
 };
 
+export type JoinResult = "joined" | "invalid" | "not_found" | "offline";
+
 export type BuyIn = { url: string | null; mode: "live" | "fallback" };
 
 export type AnteSnapshot = {
@@ -89,7 +91,7 @@ export interface AnteService {
   setName(name: string): Promise<void>;
   setWindows(windows: FreeWindow[]): Promise<void>;
   createGroup(name: string): Promise<void>;
-  joinGroup(input: string): Promise<boolean>;
+  joinGroup(input: string): Promise<JoinResult>;
   finishOnboarding(): Promise<void>;
   armNextPing(now: number): Promise<number | null>;
   startSidequest(pingAt: number, origin: LatLng): Promise<Sidequest>;

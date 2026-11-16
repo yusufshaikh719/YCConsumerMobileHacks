@@ -4,10 +4,19 @@ import Feed from "../../app/feed";
 import Join from "../../app/join/[code]";
 import Passport from "../../app/passport";
 import Settings from "../../app/settings";
+import { Onboarding } from "../screens/Onboarding";
 import { ante } from "../services";
 import { renderApp as wrap, stampedToday } from "./harness";
 
 describe("secondary screens", () => {
+  it("ONBOARDING in offline mode says so and won't fake-join a friend's code", async () => {
+    await wrap(<Onboarding inviteCode="LEBHPI" onDone={() => undefined} />);
+    expect(screen.getByText("Offline mode: not synced")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Next: your windows"));
+    expect(screen.getByText(/^We couldn't find that group/)).toBeTruthy();
+    expect(ante.getSnapshot().group.inviteCode).toBe("HILL42");
+  });
+
   it("GROUP FEED with nobody else shows you, an invite card, and an empty postcard state", async () => {
     await wrap(<Feed />);
     expect(screen.getByText("This week")).toBeTruthy();

@@ -53,15 +53,14 @@ describe("local service", () => {
     expect(reopened.getSnapshot()).toMatchObject({ onboarded: true, windows: data.windows, group: { name: "Aahil's group", inviteCode: data.group.inviteCode } });
   });
 
-  it("joins a group by code or link and rejects junk", async () => {
+  it("refuses to join a friend's code offline instead of faking a local copy", async () => {
     const { service } = make();
-    expect(await service.joinGroup("nope!")).toBe(false);
-    expect(await service.joinGroup("ante://join/ab12cd")).toBe(true);
-    expect(service.getSnapshot().group).toMatchObject({ name: "Group AB12CD", inviteCode: "AB12CD", joined: true });
     await service.createGroup("Hill Walkers");
     const group = service.getSnapshot().group;
-    expect(group).toMatchObject({ name: "Hill Walkers", joined: false });
-    expect(group.inviteCode).not.toBe("AB12CD");
+    expect(await service.joinGroup("nope!")).toBe("invalid");
+    expect(await service.joinGroup("ante://join/ab12cd")).toBe("offline");
+    expect(service.getSnapshot().group).toEqual(group);
+    expect(await service.joinGroup(group.inviteCode)).toBe("joined");
   });
 
   it("refuses overlapping windows and re-arms the ping across every slot", async () => {

@@ -205,7 +205,7 @@ describe("onboarding gate", () => {
     expect(ante.getSnapshot().group.members[0].fullName).toBe("Maya Lin");
   });
 
-  it("joining needs a real-looking invite code", async () => {
+  it("joining needs a real-looking invite code that exists", async () => {
     await renderAt(undefined, { onboarded: false });
     await fireEvent.press(screen.getByText("Join with a code"));
     await fireEvent.changeText(screen.getByLabelText("Invite code"), "??");
@@ -215,8 +215,9 @@ describe("onboarding gate", () => {
     await fireEvent.changeText(screen.getByLabelText("Invite code"), "ante://join/ab12cd");
     await fireEvent.press(screen.getByText("Next: your windows"));
     await settle();
-    expect(screen.getByText("When are you free?")).toBeTruthy();
-    expect(ante.getSnapshot().group).toMatchObject({ inviteCode: "AB12CD", joined: true });
+    expect(screen.getByText(/^We couldn't find that group/)).toBeTruthy();
+    expect(screen.queryByText("When are you free?")).toBeNull();
+    expect(ante.getSnapshot().group.inviteCode).not.toBe("AB12CD");
   });
 
   it("doesn't arm a ping until onboarding is done", async () => {

@@ -237,12 +237,12 @@ export function createConvexService({
     },
     async joinGroup(input) {
       const code = parseInviteCode(input);
-      if (!code) return false;
+      if (!code) return "invalid";
       await identify();
       const joined = await client.mutation(api.ante.joinGroup, { deviceId: saved.deviceId, inviteCode: code });
-      if (!joined) return false;
+      if (!joined) return "not_found";
       await enterGroup(joined.potId);
-      return true;
+      return "joined";
     },
     async finishOnboarding() {
       saved = { ...saved, onboarded: true };
