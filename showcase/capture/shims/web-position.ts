@@ -2,6 +2,7 @@
 // fixed geolocation reaches the real quest flow. Swapped in by metro.config.cjs on web only.
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
+export const locationAvailable = () => true;
 type Fix = { lat: number; lng: number; accuracy?: number | null };
 
 const toFix = (loc: Location.LocationObject): Fix => ({ lat: loc.coords.latitude, lng: loc.coords.longitude, accuracy: loc.coords.accuracy });
