@@ -8,7 +8,7 @@ import { joinPendingCheckout, uniqueInviteCode } from "./pots";
 import { haversineMeters } from "./sidequests";
 
 const DEVICE_ID = /^[A-Za-z0-9_-]{8,64}$/;
-const SELFIE_REJECT_CONFIDENCE = 0.5;
+const SELFIE_REJECT_CONFIDENCE = 0.8;
 
 async function userFor(ctx: QueryCtx, deviceId: string) {
   return await ctx.db.query("users").withIndex("by_device", q => q.eq("deviceId", deviceId)).unique();
@@ -159,7 +159,7 @@ export const submitArrival = action({
     const imageUrl = photoStorageId ? await ctx.runQuery(internal.ante.getPhotoUrl, { storageId: photoStorageId }) : null;
     let live: LiveResult | null = null;
     if (imageUrl && (process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY)) {
-      const prompt = `This is an arrival selfie for a walking sidequest to ${check.destName}. About the place: ${check.destSummary || "no description"}. GPS puts the player ${check.distanceMeters}m from it (target radius ${check.radiusMeters}m). The player's face may fill much of the frame, and they may be outside or inside the building. Set landmarkPassed to true only when a person is in the photo and some identifiable part of ${check.destName} is visible behind them: its name, signage or logo, its distinctive facade or entrance, or a recognizable interior feature or architecture tied to the place. A clearly readable sign or logo of ${check.destName} is enough on its own. Set landmarkPassed to false when there is no person, when the background is plainly a different place, such as a beach, a bedroom or a different famous landmark, or when nothing in the background ties it to ${check.destName}, such as a plain wall, a generic hallway, a ceiling, or anything too ambiguous to recognize. Set visualSpoofDetected to true only when the image is a screenshot, a photo of a screen or print, an obviously edited image, or blank or almost entirely black. When either check fails, put one short, friendly reason addressed to the player in visualSpoofReasons, such as "Get part of ${check.destName} in the shot, like the sign or entrance.", "No one's in the shot" or "That looks like a beach, not ${check.destName}". Set confidence (0 to 1) to how sure you are of the problem you flagged, or of the pass when nothing is wrong. Return only JSON with landmarkPassed (boolean), visualSpoofDetected (boolean), visualSpoofReasons (array of short strings), confidence (0 to 1), and roastMessage (one short playful sentence about the photo).`;
+      const prompt = `This is an arrival selfie for a walking sidequest to ${check.destName}. About the place: ${check.destSummary || "no description"}. GPS has already confirmed the player is ${check.distanceMeters}m from it (target radius ${check.radiusMeters}m), so assume they really are there. Your only job is to catch obvious cheating, not to recognize the place. The player's face may fill most of the frame and they may be outside or inside, so ${check.destName} itself often won't be identifiable, and that is fine. Set landmarkPassed to true whenever a person is in the photo and the background shows any real-world surroundings that could plausibly be at or inside ${check.destName}, such as a building exterior or interior, doors, windows, signage, a street or sidewalk, trees, an office, a lobby, furniture or other people. When in doubt, pass. Set landmarkPassed to false only when there is no person in the photo, when a blank featureless surface such as a plain wall fills the whole background with nothing else visible, or when the background is clearly a different kind of place, such as a beach, a bedroom when the place is outdoors, or a different famous landmark. Set visualSpoofDetected to true only when the image is a screenshot, a photo of a screen or a printed photo, obviously edited, or blank or almost entirely black. When either check fails, put one short, friendly reason addressed to the player in visualSpoofReasons, such as "No one's in the shot", "Show a bit more than a blank wall behind you" or "That looks like a beach, not ${check.destName}". Set confidence (0 to 1) to how sure you are of the problem you flagged, or of the pass when nothing is wrong. Return only JSON with landmarkPassed (boolean), visualSpoofDetected (boolean), visualSpoofReasons (array of short strings), confidence (0 to 1), and roastMessage (one short playful sentence about the photo).`;
       const signal = AbortSignal.timeout(12_000);
       try {
         live = await Promise.race([
@@ -172,8 +172,10 @@ export const submitArrival = action({
       }
     }
     const flagged = live !== null && (live.visualSpoofDetected || !live.landmarkPassed);
-    if (live && flagged && live.confidence >= SELFIE_REJECT_CONFIDENCE) {
-      return { ok: false, reason: "photo_rejected", note: (live.visualSpoofReasons.find(reason => reason.trim()) ?? `Get part of ${check.destName} in the shot, like the sign or entrance.`).trim().slice(0, 120) };
+    const rejected = live !== null && flagged && live.confidence >= SELFIE_REJECT_CONFIDENCE;
+    if (live) console.log("Selfie verdict", JSON.stringify({ sidequestId: position.sidequestId, destName: check.destName, landmarkPassed: live.landmarkPassed, visualSpoofDetected: live.visualSpoofDetected, reasons: live.visualSpoofReasons, confidence: live.confidence, rejected }));
+    if (live && rejected) {
+      return { ok: false, reason: "photo_rejected", note: (live.visualSpoofReasons.find(reason => reason.trim()) ?? "Show a bit more of where you are behind you.").trim().slice(0, 120) };
     }
     const note = live?.roastMessage.trim().slice(0, 200);
     const stampId = await ctx.runMutation(internal.ante.recordArrival, {
