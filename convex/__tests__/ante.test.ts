@@ -166,6 +166,40 @@ describe("selfie referee", () => {
     expect((await t.query(api.ante.getGroup, { deviceId: "device-aahil-1", potId }))!.stamps).toEqual([]);
   });
 
+  it("tells the model to pass ambiguous indoor backgrounds and stamps a plain-wall selfie", async () => {
+    const t = convexTest(schema, modules);
+    const { potId } = await group(t);
+    const fetchMock = openai({ landmarkPassed: true, visualSpoofDetected: false, roastMessage: "Riveting wall, great face." });
+    const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
+    expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toMatchObject({ ok: true, verifiedBy: "photo_ai" });
+    const prompt: string = JSON.parse(fetchMock.mock.calls[0][1]!.body as string).messages[0].content[0].text;
+    expect(prompt).toContain("A plain wall, a lobby, a hallway, a door");
+    expect(prompt).toContain("only when there is no person in the photo, or the background is plainly a different place");
+    expect(prompt).toContain("blank or almost entirely black");
+  });
+
+  it("stamps a selfie the model only doubts with low confidence", async () => {
+    const t = convexTest(schema, modules);
+    const { potId } = await group(t);
+    openai({ landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: ["Hard to tell where this is"], confidence: 0.5 });
+    const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
+    expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toMatchObject({ ok: true, verifiedBy: "photo_ai" });
+    expect((await t.query(api.ante.getGroup, { deviceId: "device-aahil-1", potId }))!.stamps).toHaveLength(1);
+  });
+
+  it.each([
+    ["a clearly different location", { landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: ["That looks like a beach, not Old Mill Fountain"], confidence: 0.92 }, "That looks like a beach, not Old Mill Fountain"],
+    ["no person in the shot", { landmarkPassed: false, visualSpoofDetected: false, visualSpoofReasons: ["No one's in the shot"], confidence: 0.9 }, "No one's in the shot"],
+    ["a blank or black photo", { landmarkPassed: true, visualSpoofDetected: true, visualSpoofReasons: ["That photo is completely black"], confidence: 0.97 }, "That photo is completely black"],
+  ])("rejects %s with the model's short reason", async (_, verdict, note) => {
+    const t = convexTest(schema, modules);
+    const { potId } = await group(t);
+    openai(verdict);
+    const photo = await t.run(ctx => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
+    expect(await stamp(t, "device-aahil-1", potId, landmark, photo)).toEqual({ ok: false, reason: "photo_rejected", note });
+    expect((await t.query(api.ante.getGroup, { deviceId: "device-aahil-1", potId }))!.stamps).toEqual([]);
+  });
+
   it("falls back to a GPS-only stamp, labeled as such, when the VLM call fails", async () => {
     const t = convexTest(schema, modules);
     const { potId } = await group(t);
