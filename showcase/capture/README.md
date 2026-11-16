@@ -16,9 +16,10 @@ What it does:
 3. Drives it in headless Chromium at 390×844, device scale 3: onboarding as "Aahil" in "Hackathon crew", then Waiting, the pot card and a Ping. When the ping's countdown ends, the app reveals a real quest. The location is fixed near Union Square, San Francisco (`CAPTURE_AT=lat,lng` to change it), and the landmark comes from the app's real Wikipedia and OpenStreetMap lookup.
 4. Moves the browser's location onto that landmark, so the app's own geofence check fires Arrived. It then takes the photo with the in-app camera and lets the app verify it, which produces the Verified postcard, the feed entry and the passport stamp.
 
-Three things exist only for capture, and they're all in this folder:
+Four things exist only for capture, and they're all in this folder:
 
 - `shims/web-position.ts` is the app's `src/lib/position.ts` without its web guard, so the browser's location reaches the quest flow on web.
+- `shims/web-notifications.ts` stands in for `src/lib/notifications.ts`, since web has no push notifications. It reports notifications as allowed, like a phone that granted permission, so Waiting doesn't show its "Turn on notifications" prompt.
 - `shims/web-file-system.js` is an in-memory stand-in for `expo-file-system`, which doesn't run on web.
 - The browser has no camera, so it's fed a still of the landmark's own Wikipedia photo. That's the photo in the Arrived, Verified, feed and passport screens.
 
