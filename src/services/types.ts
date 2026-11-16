@@ -93,7 +93,7 @@ export interface AnteService {
   createGroup(name: string): Promise<void>;
   joinGroup(input: string): Promise<JoinResult>;
   finishOnboarding(): Promise<void>;
-  armNextPing(now: number): Promise<number | null>;
+  armNextPing(now: number, pingAt?: number): Promise<number | null>;
   startSidequest(pingAt: number, origin: LatLng): Promise<Sidequest>;
   verifyArrival(quest: Sidequest, photoUri: string | null, position: Fix): Promise<Verification>;
   react(postcardId: string, reaction: Reaction): Promise<void>;

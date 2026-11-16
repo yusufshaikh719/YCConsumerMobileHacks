@@ -100,9 +100,18 @@ export function onPingNotification(handler: (pingAt: number) => void) {
     const pingAt = scheduledPingAt(notification);
     if (pingAt) handler(pingAt);
   };
-  void api.emitter.getLastNotificationResponseAsync().then(response => response && handle(response.notification)).catch(() => undefined);
+  const open = (notification: Notification) => {
+    handle(notification);
+    try {
+      api.emitter.clearLastNotificationResponse();
+    } catch {}
+  };
+  try {
+    const last = api.emitter.getLastNotificationResponse();
+    if (last) open(last.notification);
+  } catch {}
   const received = api.emitter.addNotificationReceivedListener(handle);
-  const opened = api.emitter.addNotificationResponseReceivedListener(response => handle(response.notification));
+  const opened = api.emitter.addNotificationResponseReceivedListener(response => open(response.notification));
   return () => {
     received.remove();
     opened.remove();

@@ -3,7 +3,7 @@ import { act, fireEvent, screen } from "@testing-library/react-native";
 import { useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import Home from "../../app/index";
-import { enableNotifications, notificationsGranted, schedulePing } from "../lib/notifications";
+import { enableNotifications, notificationsGranted, onPingNotification, schedulePing } from "../lib/notifications";
 import { getCurrentFix } from "../lib/position";
 import { ante } from "../services";
 import { YC_HQ } from "../dev/devQuest";
@@ -292,5 +292,50 @@ describe("ping timing without the notification", () => {
       await jest.advanceTimersByTimeAsync(8_000);
     });
     expect(screen.getByText("Shoes on.")).toBeTruthy();
+  });
+});
+
+describe("tapping the ping notification", () => {
+  const tapped = (pingAt: number) =>
+    jest.mocked(onPingNotification).mockImplementation(handler => {
+      handler(pingAt);
+      return () => undefined;
+    });
+
+  it("opens straight into PING with the countdown from the scheduled time", async () => {
+    tapped(Date.now() - 15_000);
+    await renderAt();
+    await settle();
+    expect(screen.getByText("Shoes on.")).toBeTruthy();
+    expect(screen.getByLabelText("45 seconds")).toBeTruthy();
+  });
+
+  it("opens into QUEST LIVE when the countdown already ended", async () => {
+    tapped(Date.now() - 2 * 60_000);
+    await renderAt();
+    await settle();
+    expect(screen.getByText(LANDMARK.name)).toBeTruthy();
+  });
+
+  it("ignores a stale tap from an old ping", async () => {
+    tapped(Date.now() - 60 * 60_000);
+    await renderAt();
+    await settle();
+    expect(screen.queryByText("Shoes on.")).toBeNull();
+  });
+
+  it("keeps the ping time through the quest so a reload lands back in it, and arms a new one once it's stamped", async () => {
+    await renderAt("ping-notification");
+    const pingAt = ante.getSnapshot().nextPingAt;
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(11_000);
+    });
+    expect(screen.getByText("Shoes on.")).toBeTruthy();
+    expect(ante.getSnapshot().nextPingAt).toBe(pingAt);
+    await act(async () => {
+      await jump("verified");
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(ante.getSnapshot().nextPingAt).toBeGreaterThan(Date.now());
   });
 });

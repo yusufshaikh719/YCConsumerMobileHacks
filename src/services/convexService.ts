@@ -247,17 +247,13 @@ export function createConvexService({
       saved = { ...saved, onboarded: true };
       await persist();
     },
-    async armNextPing(at) {
-      const nextPingAt = pickPingTime(saved.windows, at);
+    async armNextPing(at, pingAt) {
+      const nextPingAt = pingAt ?? pickPingTime(saved.windows, at);
       saved = { ...saved, nextPingAt };
       await persist();
       return nextPingAt;
     },
     async startSidequest(pingAt, origin) {
-      if (saved.nextPingAt === pingAt) {
-        saved = { ...saved, nextPingAt: null };
-        await persist();
-      }
       if (!saved.potId) throw new Error("Join a group first");
       const landmark = await discover(origin);
       if (!landmark) throw new NoLandmarkError();

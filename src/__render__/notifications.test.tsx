@@ -43,4 +43,15 @@ describe("local notifications without ExpoApplication", () => {
     expect(permissions.requestPermissionsAsync).not.toHaveBeenCalled();
   });
 
+
+  it("handles a tap that cold-started the app once, then clears it", () => {
+    const emitter = require("expo-notifications/build/NotificationsEmitterModule").default as Record<string, jest.Mock>;
+    const pingAt = Date.now();
+    emitter.getLastNotificationResponse = jest.fn(() => ({ actionIdentifier: "expo.modules.notifications.actions.DEFAULT", notification: { date: pingAt, request: { identifier: "p", content: { title: "Sidequest in 1 minute", data: { pingAt } }, trigger: null } } }));
+    emitter.clearLastNotificationResponse = jest.fn();
+    const handler = jest.fn();
+    lib.onPingNotification(handler);
+    expect(handler).toHaveBeenCalledWith(pingAt);
+    expect(emitter.clearLastNotificationResponse).toHaveBeenCalled();
+  });
 });

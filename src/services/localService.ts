@@ -133,17 +133,13 @@ export function createLocalService({ storage, discover = origin => discoverLandm
       saved = { ...saved, onboarded: true };
       await persist();
     },
-    async armNextPing(at) {
-      const nextPingAt = pickPingTime(saved.windows, at);
+    async armNextPing(at, pingAt) {
+      const nextPingAt = pingAt ?? pickPingTime(saved.windows, at);
       saved = { ...saved, nextPingAt };
       await persist();
       return nextPingAt;
     },
     async startSidequest(pingAt, origin) {
-      if (saved.nextPingAt === pingAt) {
-        saved = { ...saved, nextPingAt: null };
-        await persist();
-      }
       const landmark = await discover(origin);
       if (!landmark) throw new NoLandmarkError();
       const distance = distanceMeters(origin, landmark.coords);
