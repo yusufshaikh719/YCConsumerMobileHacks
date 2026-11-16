@@ -3,7 +3,7 @@ import { act, fireEvent, screen } from "@testing-library/react-native";
 import { useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import Home from "../../app/index";
-import { enableNotifications, notificationsGranted } from "../lib/notifications";
+import { enableNotifications, notificationsGranted, schedulePing } from "../lib/notifications";
 import { getCurrentFix } from "../lib/position";
 import { ante } from "../services";
 import { YC_HQ } from "../dev/devQuest";
@@ -261,5 +261,36 @@ describe("notification permission", () => {
       await jest.advanceTimersByTimeAsync(100);
     });
     expect(screen.queryByText("Turn on notifications")).toBeNull();
+  });
+});
+
+describe("ping timing without the notification", () => {
+  it("a ping stored before a relaunch fires PING on open, even if the notification never came", async () => {
+    await renderAt(undefined, { nextPingAt: Date.now() - 20_000 });
+    await settle();
+    expect(screen.getByText("Shoes on.")).toBeTruthy();
+  });
+
+  it("a ping a few minutes late still starts the quest, straight into QUEST LIVE", async () => {
+    await renderAt(undefined, { nextPingAt: Date.now() - 3 * 60_000 });
+    await settle();
+    expect(screen.getByText(LANDMARK.name)).toBeTruthy();
+  });
+
+  it("a ping that is long gone arms a new one instead", async () => {
+    const stale = Date.now() - 60 * 60_000;
+    await renderAt(undefined, { nextPingAt: stale });
+    await settle();
+    expect(screen.queryByText("Shoes on.")).toBeNull();
+    expect(ante.getSnapshot().nextPingAt).not.toBe(stale);
+  });
+
+  it("the dev Real ping reaches PING in 10s even when scheduling the notification fails", async () => {
+    jest.mocked(schedulePing).mockRejectedValueOnce(new Error("scheduler unavailable"));
+    await renderAt("ping-notification");
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(8_000);
+    });
+    expect(screen.getByText("Shoes on.")).toBeTruthy();
   });
 });

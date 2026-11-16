@@ -15,6 +15,7 @@ type Saved = {
   windows: FreeWindow[];
   group: { name: string; inviteCode: string; joined: boolean };
   onboarded: boolean;
+  nextPingAt?: number | null;
   postcards: (Omit<Postcard, "photo"> & { photoUri: string | null })[];
 };
 
@@ -45,7 +46,6 @@ export function createLocalService({ storage, discover = origin => discoverLandm
   const newCode = () => Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "X");
   let saved: Saved = { name: "", windows: DEFAULT_WINDOWS, group: { name: "", inviteCode: newCode(), joined: false }, onboarded: false, postcards: [] };
   let loaded = false;
-  let nextPingAt: number | null = null;
 
   const me = (): Member => {
     const name = saved.name.trim() || "You";
@@ -78,7 +78,7 @@ export function createLocalService({ storage, discover = origin => discoverLandm
       windows: saved.windows,
       postcards,
       standings: rankStandings(members, postcards),
-      nextPingAt,
+      nextPingAt: saved.nextPingAt ?? null,
     };
   };
 
@@ -117,8 +117,7 @@ export function createLocalService({ storage, discover = origin => discoverLandm
     },
     async setWindows(windows) {
       if (!validWindows(windows)) throw new Error("Windows must not overlap");
-      saved = { ...saved, windows: sortWindows(windows) };
-      nextPingAt = null;
+      saved = { ...saved, windows: sortWindows(windows), nextPingAt: null };
       await persist();
     },
     async createGroup(name) {
@@ -135,14 +134,15 @@ export function createLocalService({ storage, discover = origin => discoverLandm
       await persist();
     },
     async armNextPing(at) {
-      nextPingAt = pickPingTime(saved.windows, at);
-      emit();
+      const nextPingAt = pickPingTime(saved.windows, at);
+      saved = { ...saved, nextPingAt };
+      await persist();
       return nextPingAt;
     },
     async startSidequest(pingAt, origin) {
-      if (nextPingAt === pingAt) {
-        nextPingAt = null;
-        emit();
+      if (saved.nextPingAt === pingAt) {
+        saved = { ...saved, nextPingAt: null };
+        await persist();
       }
       const landmark = await discover(origin);
       if (!landmark) throw new NoLandmarkError();
