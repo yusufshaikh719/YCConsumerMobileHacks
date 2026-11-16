@@ -103,9 +103,8 @@ describe("convex service group sync", () => {
     await a.service.createGroup("Hill crew");
     const code = a.service.getSnapshot().group.inviteCode;
     expect(code).toMatch(/^[0-9A-Z]{6}$/);
-    expect(await b.service.joinGroup("not a code!")).toBe(false);
-    expect(await b.service.joinGroup("ZZZZZZ")).toBe(false);
-    expect(await b.service.joinGroup(`ante://join/${code}`)).toBe(true);
+    expect(await b.service.joinGroup("not a code!")).toBe("invalid");
+    expect(await b.service.joinGroup(`ante://join/${code}`)).toBe("joined");
     for (const { service } of [a, b]) {
       const data = service.getSnapshot();
       expect(data.group.name).toBe("Hill crew");
@@ -114,6 +113,15 @@ describe("convex service group sync", () => {
     }
     expect(b.service.getSnapshot().group.joined).toBe(true);
     expect(b.service.getSnapshot().group.members.find(m => m.id === b.service.getSnapshot().meId)?.name).toBe("You");
+  });
+
+  it("fails to join a code the server doesn't know and leaves the phone out of any group", async () => {
+    const t = convexTest(schema, modules);
+    const { backend } = connect(t);
+    const b = await phone(t, backend, "Aahil");
+    expect(await b.service.joinGroup("LEBHPI")).toBe("not_found");
+    expect(JSON.parse((await b.storage.read())!).potId).toBeNull();
+    expect(b.service.getSnapshot().group).toMatchObject({ inviteCode: "", joined: false, members: [{ fullName: "Aahil" }] });
   });
 
   it("syncs sidequest windows to Convex availability for every weekday", async () => {
