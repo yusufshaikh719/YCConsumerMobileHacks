@@ -55,11 +55,15 @@ export function createLocalService({ storage, discover = origin => discoverLandm
   const build = (): AnteSnapshot => {
     const now = clock();
     const { startsAt, endsAt } = weekBounds(now);
-    const members = [me()];
+    const others: Member[] = [["maya","Maya Chen","MC","#E4572E"],["dev","Dev Patel","DP","#2E86AB"],["sofia","Sofia Reyes","SR","#A23B72"],["jordan","Jordan Lee","JL","#F18F01"],["priya","Priya Nair","PN","#6B4E9B"]].map(([id,fullName,i,tint])=>({id,name:fullName.split(" ")[0],fullName,initials:i,tint}));
+    const members = [me(), ...others];
+    const spots=[["Ferry Building","Embarcadero",37.7955,-122.3937],["Coit Tower","Telegraph Hill",37.8024,-122.4058],["Dolores Park","Mission",37.7596,-122.4269],["Painted Ladies","Alamo Square",37.7762,-122.4328],["Transamerica Pyramid","FiDi",37.7952,-122.4028],["Lombard Street","Russian Hill",37.8021,-122.4187],["Oracle Park","SoMa",37.7786,-122.3893],["Palace of Fine Arts","Marina",37.8029,-122.4484],["Salesforce Tower","SoMa",37.7897,-122.3969],["YC HQ","Dogpatch",37.76071,-122.38602]];
+    const counts=[["maya",4],["dev",3],["sofia",3],["jordan",2],["priya",1]];
+    const seeded: Postcard[] = counts.flatMap(([id,n],ci)=>Array.from({length:n as number},(_,k)=>{const sp=spots[(ci*3+k)%spots.length];return {id:"seed-"+id+k,memberId:id as string,landmark:{id:"seed-"+sp[0],name:sp[0] as string,neighborhood:sp[1] as string,coords:{lat:sp[2] as number,lng:sp[3] as number},thumbnail:null,trivia:"A San Francisco landmark.",source:"OpenStreetMap" as const,radiusMeters:50},photo:null,completedAt:now-(ci*5+k*3+1)*3600_000,minutesTaken:8+ci*2+k,reactions:{"🔥":["maya"],"👏":["dev"],"😂":[],"🫡":[]}} as Postcard}));
     const postcards = saved.postcards
       .filter(p => p.completedAt > startsAt && p.completedAt <= endsAt)
       .sort((a, b) => b.completedAt - a.completedAt)
-      .map(({ photoUri, ...p }) => ({ ...p, photo: photoUri ? { uri: photoUri } : null }));
+      .map(({ photoUri, ...p }) => ({ ...p, photo: photoUri ? { uri: photoUri } : null })).concat(seeded).sort((a, b) => b.completedAt - a.completedAt);
     return {
       meId: ME_ID,
       backend: "local",
@@ -73,7 +77,7 @@ export function createLocalService({ storage, discover = origin => discoverLandm
         joined: saved.group.joined,
       },
       stakeCents: STAKE_CENTS,
-      potCents: STAKE_CENTS * members.length,
+      potCents: 10000,
       weekEndsAt: endsAt,
       windows: saved.windows,
       postcards,
