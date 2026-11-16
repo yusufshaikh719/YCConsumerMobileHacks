@@ -2,7 +2,7 @@ import { distanceMeters } from "../lib/geo";
 import { PING_LEAD_MS } from "../lib/time";
 import { walkMinutesFor } from "../services/discovery";
 import { completionMinutes } from "../services/localService";
-import type { Landmark, Sidequest } from "../services/types";
+import type { Fix, Landmark, Sidequest } from "../services/types";
 
 export const YC_HQ: Landmark = {
   id: "dev-yc-hq",
@@ -25,3 +25,5 @@ export function devQuest(pingAt: number): Sidequest {
   return { id: `sq-dev-${pingAt}`, landmark: YC_HQ, origin: DEV_ORIGIN, pingAt, revealAt, expiresAt: revealAt + completionMinutes(walkMinutes) * 60_000, distanceMeters: distance, walkMinutes };
 }
 
+
+export const devPosition = (quest: Sidequest): Fix | null => (quest.landmark.id === YC_HQ.id ? { ...YC_HQ.coords, accuracy: 5 } : null);

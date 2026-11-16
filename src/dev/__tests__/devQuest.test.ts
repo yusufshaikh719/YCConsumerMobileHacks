@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { distanceMeters } from "../../lib/geo";
 import { insideGeofence } from "../../lib/geofence";
 import { PING_LEAD_MS } from "../../lib/time";
-import { devQuest, YC_HQ } from "../devQuest";
+import { devPosition, devQuest, YC_HQ } from "../devQuest";
 
 describe("dev switcher quest", () => {
   it("targets the 20th Street entrance of Y Combinator's HQ at 560 20th St", () => {
@@ -18,5 +18,12 @@ describe("dev switcher quest", () => {
     expect(quest.revealAt).toBe(1_000_000 + PING_LEAD_MS);
     expect(insideGeofence(quest.origin, YC_HQ)).toBe(false);
     expect(insideGeofence(YC_HQ.coords, YC_HQ)).toBe(true);
+  });
+
+  it("puts you at the entrance when verifying a dev quest, and leaves real quests on GPS", () => {
+    const quest = devQuest(1_000_000);
+    const at = devPosition(quest);
+    expect(at && insideGeofence(at, YC_HQ)).toBe(true);
+    expect(devPosition({ ...quest, landmark: { ...YC_HQ, id: "wiki-1" } })).toBeNull();
   });
 });
