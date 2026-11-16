@@ -16,11 +16,10 @@ await page.getByText("Next: your windows").click();
 await page.waitForTimeout(1500);await shot("onboarding-windows");
 await page.getByText("Start playing").click();
 await page.getByText("This week's pot").waitFor({timeout:60000});
-for(const [n,s] of [["waiting","waiting-open"],["quest-live","live"],["arrived","arrived"],["verifying","verifying"],["verified","verified"],["failed-timeup","failed"],["not-verified","not-verified"],["ping","ping"]]){
- await page.goto(APP+"?state="+s,{waitUntil:"networkidle"});await shot(n);
- if(n==="waiting"){await page.mouse.move(195,600);await page.mouse.wheel(0,1200);await shot("waiting-pot");}
-}
-await page.goto(APP+"?state=waiting-open",{waitUntil:"networkidle"});await page.waitForTimeout(1500);
+const tap=async hint=>{await page.getByLabel("Open demo state switcher").click();await page.waitForTimeout(800);for(const o of await page.getByText(hint,{exact:true}).all()){const bx=await o.boundingBox();if(!bx)continue;const x=bx.x+bx.width/2,y=bx.y+bx.height/2;if(!(await o.evaluate((el,[a,c])=>el.contains(document.elementFromPoint(a,c)),[x,y])))continue;await page.mouse.click(x,y);return}throw new Error(hint)};
+await tap("Window open, armed");if(!process.env.ONLY_FEED){await shot("waiting");await page.mouse.move(195,600);await page.mouse.wheel(0,1200);await shot("waiting-pot");}
+if(!process.env.ONLY_FEED)for(const [n,h] of [["ping","60s countdown"],["quest-live","Compass + timer"],["arrived","Selfie at YC HQ entrance"],["verifying","Stamp pending"],["verified","Postcard + stamp"],["failed-timeup","Window closed"],["not-verified","Retake allowed"]]){await tap(h);await shot(n);}
+await tap("Window open, armed");await page.waitForTimeout(1500);
 await page.getByLabel("Group feed").first().click();await shot("feed");
 await page.mouse.wheel(0,900);await shot("feed-scrolled");
 await page.goBack();await page.getByText("Your passport").first().click();await shot("passport");
