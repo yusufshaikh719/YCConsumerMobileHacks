@@ -144,13 +144,15 @@ body[data-theme="moss"] { background: var(--moss); }
 .row.hi b { color: var(--sprout); }
 .after { font-size: 36px; font-weight: 500; color: var(--on-moss); }
 
-.s-built { display: flex; flex-direction: column; justify-content: center; gap: 80px; }
+.s-built { display: flex; flex-direction: column; justify-content: center; gap: 56px; }
 .diagram { display: grid; grid-template-columns: 1fr 160px 1fr 160px 1fr; align-items: stretch; }
 .node { background: var(--card); border: 2px solid var(--card-edge); border-radius: 20px; padding: 44px 44px 48px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 24px 50px -34px rgba(15, 46, 30, .35); }
 .node h3 { font-family: var(--display); font-weight: 400; font-size: 64px; line-height: 1; letter-spacing: .5px; margin-bottom: 14px; }
 .node ul { list-style: none; display: flex; flex-direction: column; gap: 18px; border-top: 2px dashed var(--rule); padding-top: 26px; }
 .node li { font-size: 26px; line-height: 1.32; color: var(--ink-soft); padding-left: 30px; position: relative; }
 .node li::before { content: ""; position: absolute; left: 0; top: 12px; width: 12px; height: 12px; border-radius: 50%; background: var(--leaf); }
+.tested { display: flex; align-items: center; gap: 22px; align-self: flex-start; padding: 16px 30px 16px 26px; border: 2px dashed var(--rule); border-radius: 999px; font-size: 28px; font-weight: 600; color: var(--ink); }
+.tested .label { color: var(--leaf); font-size: 18px; }
 .link { position: relative; display: flex; align-items: center; justify-content: center; }
 .link::before { content: ""; position: absolute; left: 10px; right: 10px; top: 50%; border-top: 3px dotted var(--leaf); transform: scaleX(0); transform-origin: left; }
 .is-active .link::before { transform: none; transition: transform .7s var(--out); transition-delay: calc(500ms + var(--d, 0) * 110ms); }
