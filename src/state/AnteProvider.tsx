@@ -4,7 +4,7 @@ import { AppState, Linking, Platform } from "react-native";
 import { devPosition, devQuest } from "../dev/devQuest";
 import { devToolsEnabled } from "../dev/enabled";
 import { arrivedAt } from "../lib/geofence";
-import { cancelPing, enableNotifications, notificationsGranted, onPingNotification, schedulePing } from "../lib/notifications";
+import { enableNotifications, notificationsGranted, onPingNotification, schedulePing } from "../lib/notifications";
 import { getCurrentFix, useDevicePosition, useHeading } from "../lib/position";
 import { PING_LEAD_MS } from "../lib/time";
 import { ante } from "../services";
@@ -64,7 +64,13 @@ export function AnteProvider({ children }: { children: ReactNode }) {
     dispatch("quest" in found ? { type: "QUEST_READY", quest: found.quest, now: Date.now() } : { type: "QUEST_UNAVAILABLE", reason: found.reason });
   }, []);
 
-  useEffect(() => onPingNotification(pingAt => void firePing(pingAt)), [firePing]);
+  useEffect(
+    () =>
+      onPingNotification(pingAt => {
+        if (Date.now() < pingAt + PING_LEAD_MS + LATE_START_MS) void firePing(pingAt);
+      }),
+    [firePing],
+  );
 
   useEffect(() => {
     if (phase.name !== "waiting" || !data.onboarded) return;
@@ -111,6 +117,11 @@ export function AnteProvider({ children }: { children: ReactNode }) {
     if (router.canDismiss()) router.dismissAll();
   }, [phase.name]);
 
+  const questOver = phase.name === "verified" || (phase.name === "failed" && phase.reason !== "not_verified");
+  useEffect(() => {
+    if (questOver) void ante.armNextPing(Date.now());
+  }, [questOver]);
+
   useEffect(() => {
     if (phase.name !== "ping" || !phase.quest) return;
     const timer = setTimeout(() => dispatch({ type: "REVEAL" }), Math.max(0, phase.timing.revealAt - Date.now()));
@@ -151,12 +162,7 @@ export function AnteProvider({ children }: { children: ReactNode }) {
     }
     if (target === "ping-notification") {
       dispatch({ type: "DEV_JUMP", phase: { name: "waiting" } });
-      const pingAt = at + 10_000;
-      scheduledFor.current = pingAt;
-      setTimeout(() => void firePing(pingAt), 10_000);
-      const ok = await enableNotifications();
-      setNotificationsOn(ok);
-      if (ok) await schedulePing(pingAt).catch(() => undefined);
+      await ante.armNextPing(at, at + 10_000);
       return;
     }
     if (target === "ping") {
